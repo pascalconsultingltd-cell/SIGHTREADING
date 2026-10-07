@@ -1,0 +1,373 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+  <meta name="theme-color" content="#f3f5ef">
+  <title>Sight-Reading Practice</title>
+  <link rel="manifest" href="manifest.webmanifest">
+  <link rel="icon" type="image/png" sizes="192x192" href="icon-192.png">
+  <link rel="apple-touch-icon" href="apple-touch-icon.png">
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-title" content="Sight-Reading">
+  <meta name="apple-mobile-web-app-status-bar-style" content="default">
+  <style>
+    *{box-sizing:border-box}
+    :root{font-family:system-ui,-apple-system,"Segoe UI",sans-serif;color:#173b32;background:#f3f5ef;font-synthesis:none}
+    body{margin:0;min-height:100vh;min-height:100dvh}
+    main{width:min(100%,520px);margin:0 auto;padding:18px 16px calc(14px + env(safe-area-inset-bottom))}
+    header{margin:4px 2px 14px}
+    h1{margin:0;font-size:22px;line-height:1.2;letter-spacing:.2px;font-weight:850}
+    .label{font-size:10px;font-weight:800;letter-spacing:1.1px;color:#829087}
+    .stats{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:10px}
+    .stat,.card{background:#fff;border-radius:20px}
+    .stat{padding:12px 16px;min-height:74px}
+    .stat strong{display:block;margin-top:2px;font-size:24px}
+    .stat.urgent{background:#c43d35;color:#fff;transition:background .2s ease,color .2s ease}
+    .stat.urgent .label{color:#fff}
+    .settings{margin:0 0 10px;padding:12px 14px;background:#fff;border-radius:18px}
+    .settingLine{display:flex;align-items:center;justify-content:space-between;gap:10px}
+    .settingTitle{font-size:10px;font-weight:850;letter-spacing:1px;color:#829087}
+    .soundToggle,.octaveChoice{border:1px solid #e2e8df;border-radius:12px;background:#f7f8f4;color:#52665a;font-weight:800}
+    .soundToggle{min-width:92px;padding:9px 12px;font-size:12px}
+    .soundToggle[aria-pressed="true"],.octaveChoice.selected{border-color:#173b32;background:#173b32;color:#fff}
+    .octaveChoices{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:6px;margin-top:8px}
+    .octaveChoice{min-height:38px;padding:4px 2px;font-size:12px}
+    .rangeBounds{margin:7px 0 0;color:#738078;font-size:11px}
+    .bestScores{margin:10px 0 0;color:#738078;font-size:11px;line-height:1.5}
+    .bestScores strong{color:#52665a}
+    .unit{font-size:12px;font-weight:500;color:#738078}
+    .card{padding:14px;border-radius:24px;box-shadow:0 7px 24px #253a3010}
+    button{font:inherit;touch-action:manipulation;cursor:pointer;-webkit-tap-highlight-color:transparent}
+    .staffWrap{margin:0 -8px 4px;overflow:hidden}
+    #staff{display:block;width:100%;height:auto}
+    .feedback{display:grid;place-items:center;min-height:34px;padding:5px 10px;border-radius:12px;background:#f3f5ef;color:#748178;text-align:center;font-size:13px;font-weight:650}
+    .feedback.good{background:#e7f3d1;color:#315d2e}
+    .feedback.bad{background:#f8e9e3;color:#9a4a36}
+    .start{display:block;width:100%;min-height:54px;margin-top:10px;border:0;border-radius:16px;background:#173b32;color:#fff;font-size:15px;font-weight:850;letter-spacing:1px}
+    .start:active{transform:scale(.98);background:#285444}
+    .answerArea{margin-top:12px}
+    .answerLabel{margin:0 2px 8px;font-size:13px;font-weight:750;color:#52665a}
+    .keyboardHint{margin-left:6px;color:#89938b;font-size:10px;font-weight:550}
+    .accidentalToggles{display:flex;gap:6px}
+    .accidentalToggle{min-width:78px;padding:8px 9px;border:1px solid #e2e8df;border-radius:11px;background:#f7f8f4;color:#52665a;font-size:11px;font-weight:800}
+    .accidentalToggle[aria-pressed="true"]{border-color:#173b32;background:#173b32;color:#fff}
+    .piano{position:relative;padding-top:44px}
+    .naturalKeys{display:grid;grid-template-columns:repeat(7,minmax(0,1fr));gap:4px}
+    .answer{min-width:0;border:1px solid #e7ebe3;border-radius:12px;background:#fff;color:#264338;font-weight:800}
+    .naturalKey{min-height:60px;padding:5px 1px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px}
+    .keySolfege{font-size:clamp(11px,3.4vw,15px);line-height:1.1}
+    .keyLetter{font-size:11px;line-height:1;color:#829087;font-weight:650}
+    .blackKey{position:absolute;top:0;z-index:2;width:clamp(42px,12vw,54px);height:44px;padding:3px 1px;border:1px solid #102a24;border-radius:8px;background:#173b32;color:#fff;box-shadow:0 3px 5px #152b2540;transform:translateX(-50%);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px}
+    .blackKey .keySolfege{font-size:clamp(9px,2.7vw,12px)}
+    .blackKey .keyLetter{font-size:9px;color:#c7d4cc}
+    .answer:active{transform:scale(.97);background:#e7f3d1}
+    .blackKey:active{transform:translateX(-50%) scale(.97);background:#285444}
+    .answer:disabled{opacity:.65;cursor:default}
+    footer{margin-top:10px;text-align:center;color:#89938b;font-size:11px;font-weight:600;letter-spacing:.3px}
+    @media(max-width:360px){main{padding-left:10px;padding-right:10px}.naturalKeys{gap:2px}.naturalKey{min-height:56px}.blackKey{width:40px}}
+    @media(max-height:700px){main{padding-top:14px}.staffWrap{margin-top:0}.answer{min-height:52px}}
+  </style>
+</head>
+<body>
+  <main>
+    <header><h1>SIGHT-READING PRACTICE</h1></header>
+    <section class="stats" aria-label="Game score and time">
+      <div class="stat"><div class="label">NOTES CORRECT</div><strong id="score">0</strong></div>
+      <div class="stat" id="timeStat"><div class="label">TIME LEFT</div><strong id="time">0:40</strong></div>
+    </section>
+    <section class="settings" aria-label="Game settings">
+      <div class="settingLine"><span class="settingTitle">NOTE SOUND</span><button class="soundToggle" id="soundToggle" type="button" aria-pressed="true">SOUND ON</button></div>
+      <div class="settingLine" style="margin-top:10px"><span class="settingTitle">ACCIDENTALS</span><div class="accidentalToggles"><button class="accidentalToggle" id="sharpToggle" type="button" aria-pressed="false"># SHARPS</button><button class="accidentalToggle" id="flatToggle" type="button" aria-pressed="false">♭ FLATS</button></div></div>
+      <div class="settingLine" style="margin-top:10px"><span class="settingTitle">CLEFS</span><button class="accidentalToggle" id="bassToggle" type="button" aria-pressed="false">ADD BASS CLEF</button></div>
+      <div class="settingTitle" style="margin-top:12px">NOTE RANGE</div>
+      <div class="octaveChoices" id="octaveChoices" role="group" aria-label="Select note range">
+        <button class="octaveChoice selected" type="button" data-range="normal" aria-pressed="true">NORMAL</button>
+        <button class="octaveChoice" type="button" data-range="extended" aria-pressed="false">EXTENDED</button>
+      </div>
+      <p class="rangeBounds" id="rangeBounds"></p>
+      <p class="bestScores" id="bestScores" aria-live="polite"></p>
+    </section>
+    <section class="card" aria-label="Note practice">
+      <div class="staffWrap"><svg id="staff" viewBox="0 0 420 260" role="img" aria-label="Treble clef staff with the current note"></svg></div>
+      <div class="feedback" id="feedback" aria-live="polite">Identify as many notes as you can in 40 seconds.</div>
+    </section>
+    <button class="start" id="start" type="button">START GAME</button>
+    <section class="answerArea" id="answerArea" hidden>
+      <p class="answerLabel">Choose the note <small class="keyboardHint">Keyboard: C V B N M , . · accidentals: F G H K L</small></p>
+      <div class="piano" id="answers" aria-label="Solfege answers"></div>
+    </section>
+    <footer>Sight-reading · normal or extended range · 40 seconds</footer>
+  </main>
+  <script>
+    "use strict";
+    const SOLFEGE=["Do","Re","Mi","Fa","Sol","La","Si"],LETTERS=["C","D","E","F","G","A","B"],NATURAL_CLASSES=[0,2,4,5,7,9,11],LETTER_STEPS=[-2,-1,0,1,2,3,4];
+    const SHARP_NAMES=["Do","Do#","Re","Re#","Mi","Fa","Fa#","Sol","Sol#","La","La#","Si"],SHARP_LETTERS=["C","C#","D","D#","E","F","F#","G","G#","A","A#","B"],SHARP_OFFSETS=[0,0,1,1,2,3,3,4,4,5,5,6];
+    const FLAT_NAMES=["Do","Re♭","Re","Mi♭","Mi","Fa","Sol♭","Sol","La♭","La","Si♭","Si"],FLAT_LETTERS=["C","D♭","D","E♭","E","F","G♭","G","A♭","A","B♭","B"],FLAT_OFFSETS=[0,1,1,2,2,3,4,4,5,5,6,6];
+    // MIDI bounds per clef: normal stays on the staff (no ledger lines), extended is bass C2–G4 and treble E3–E6.
+    const RANGE_NAMES=["normal","extended"],RANGES={normal:{bass:[41,59],treble:[62,79]},extended:{bass:[36,67],treble:[52,88]}},CLEF_FONT="'Noto Music','Segoe UI Symbol',serif";
+    const TOTAL=10,GAME_SECONDS=40,LINE_GAP=16,STEP=LINE_GAP/2,BOTTOM_Y=136;
+    function readStorage(key,fallback){try{const value=localStorage.getItem(key);return value===null?fallback:JSON.parse(value);}catch{return fallback;}}
+    function writeStorage(key,value){try{localStorage.setItem(key,JSON.stringify(value));}catch{}}
+    const savedSettings=readStorage("noteTrainerSettings",{}),loadedBestScores=readStorage("noteTrainerBestScoresRange",{});
+    let selectedRange=RANGE_NAMES.includes(savedSettings?.range)?savedSettings.range:"normal";
+    let soundEnabled=savedSettings?.sound!==false;
+    let sharpEnabled=savedSettings?.sharps===true,flatEnabled=savedSettings?.flats===true;
+    let bassEnabled=savedSettings?.bassClef===true;
+    let bestScores=loadedBestScores&&typeof loadedBestScores==="object"?loadedBestScores:{};
+    let NOTES=makeNotes(),round=[],outcomes=[],index=0,score=0,locked=false,active=false,timer=null,noteTimer=null,endAt=0,audioContext=null,soundUnlocked=false;
+    const staff=document.querySelector("#staff"),feedback=document.querySelector("#feedback");
+
+    // Extended range needs more room between the staves for the ledger lines of both.
+    function bassBottomY(){return selectedRange==="extended"?312:264;}
+    function makeNotes(){
+      const range=RANGES[selectedRange],firstMidi=bassEnabled?range.bass[0]:range.treble[0],lastMidi=range.treble[1],notes=[],bassSteps={C:-4,D:-3,E:-2,F:-1,G:0,A:1,B:2};
+      for(let midi=firstMidi;midi<=lastMidi;midi++){
+        const pitchClass=midi%12,isNatural=NATURAL_CLASSES.includes(pitchClass);
+        if(!isNatural&&!sharpEnabled&&!flatEnabled)continue;
+        const names=flatEnabled&&!sharpEnabled?FLAT_NAMES:SHARP_NAMES,letters=flatEnabled&&!sharpEnabled?FLAT_LETTERS:SHARP_LETTERS,offsets=flatEnabled&&!sharpEnabled?FLAT_OFFSETS:SHARP_OFFSETS;
+        const name=letters[pitchClass],octave=Math.floor(midi/12)-1,degree=offsets[pitchClass],accidental=name.length>1?name.slice(1):"";
+        // A note inside both clefs' ranges gets an entry for each; makeRound picks one at random.
+        const clefs=(bassEnabled?["bass","treble"]:["treble"]).filter(clef=>midi>=range[clef][0]&&midi<=range[clef][1]);
+        clefs.forEach(clef=>{
+          const staffStep=clef==="bass"?(octave-2)*7+bassSteps[name[0]]:(octave-4)*7+LETTER_STEPS[degree];
+          notes.push({name:name[0],accidental,octave,solfege:names[pitchClass],staffStep,midi,clef});
+        });
+      }
+      return notes;
+    }
+    function makeRound(avoidPitch,notePool=NOTES){
+      const result=[],pitches=[...new Set(notePool.map(note=>note.midi))];
+      while(result.length<TOTAL){
+        // Pick the pitch first, then one of the clefs it can be written in.
+        const pitch=pitches[Math.floor(Math.random()*pitches.length)],options=notePool.filter(note=>note.midi===pitch),note=options[Math.floor(Math.random()*options.length)];
+        const previous=result.at(-1)?.midi;
+        if(pitch!==(previous??avoidPitch)) result.push(note);
+      }
+      return result;
+    }
+    // Sizes a clef glyph from its measured ink so it lands on the right lines whatever font renders it.
+    function clefGlyph(char,top,height){
+      const context=clefGlyph.context??=document.createElement("canvas").getContext("2d");
+      context.font=`100px ${CLEF_FONT}`;
+      const metrics=context.measureText(char),ink=metrics.actualBoundingBoxAscent+metrics.actualBoundingBoxDescent,scale=ink>0?height/ink:1;
+      return `<text x="${30+metrics.actualBoundingBoxLeft*scale}" y="${top+metrics.actualBoundingBoxAscent*scale}" font-size="${100*scale}" font-family="${CLEF_FONT}" fill="#233c32">${char}</text>`;
+    }
+    // Finds the bass clef's two dots in the rendered glyph so they can be put one space apart, either side of the F3 line.
+    function measureBassDots(){
+      const size=200,originX=size/2,baseline=size*1.5,canvas=document.createElement("canvas");
+      canvas.width=canvas.height=size*2;
+      const context=canvas.getContext("2d",{willReadFrequently:true});
+      context.font=`${size}px ${CLEF_FONT}`;context.fillText("𝄢",originX,baseline);
+      const pixels=context.getImageData(0,0,canvas.width,canvas.height).data,inked=(x,y)=>pixels[(y*canvas.width+x)*4+3]>80;
+      let left=canvas.width,right=-1;
+      for(let y=0;y<canvas.height;y++)for(let x=0;x<canvas.width;x++)if(inked(x,y)){left=Math.min(left,x);right=Math.max(right,x);}
+      if(right<0)return null;
+      const dotsFrom=Math.ceil(right-(right-left)*.1),runs=[];
+      for(let y=0,open=false;y<canvas.height;y++){
+        let hit=false;
+        for(let x=dotsFrom;x<=right&&!hit;x++)hit=inked(x,y);
+        if(hit&&!open)runs.push([y,y]);else if(hit)runs.at(-1)[1]=y;
+        open=hit;
+      }
+      if(runs.length!==2)return null;
+      const upper=(runs[0][0]+runs[0][1])/2,lower=(runs[1][0]+runs[1][1])/2,scale=LINE_GAP/(lower-upper);
+      return {size:size*scale,dx:(originX-left)*scale,dy:(baseline-(upper+lower)/2)*scale};
+    }
+    function bassClefGlyph(){
+      const top=bassBottomY()-4*LINE_GAP;
+      if(bassClefGlyph.dots===undefined)bassClefGlyph.dots=measureBassDots();
+      const dots=bassClefGlyph.dots;
+      if(!dots)return clefGlyph("𝄢",top,3.5*LINE_GAP);
+      return `<text x="${30+dots.dx}" y="${top+LINE_GAP+dots.dy}" font-size="${dots.size}" font-family="${CLEF_FONT}" fill="#233c32">𝄢</text>`;
+    }
+    function drawStaff(){
+      const shown=active?round.slice(0,index+1):[],trebleLines=[0,1,2,3,4].map(i=>`<line x1="24" y1="${BOTTOM_Y-4*LINE_GAP+i*LINE_GAP}" x2="414" y2="${BOTTOM_Y-4*LINE_GAP+i*LINE_GAP}"/>`).join(""),bassLines=bassEnabled?[0,1,2,3,4].map(i=>`<line x1="24" y1="${bassBottomY()-4*LINE_GAP+i*LINE_GAP}" x2="414" y2="${bassBottomY()-4*LINE_GAP+i*LINE_GAP}"/>`).join(""):"";
+      const staffY=note=>note.clef==="bass"?bassBottomY():BOTTOM_Y,positions=shown.map(note=>staffY(note)-note.staffStep*STEP);
+      const top=Math.min(18,...positions.map(y=>y-24)),bottom=Math.max(bassEnabled?bassBottomY()+18:BOTTOM_Y+32,...positions.map(y=>y+24));
+      staff.setAttribute("viewBox",`0 ${Math.floor(top)} 420 ${Math.ceil(bottom-top)}`);
+      let marks="";
+      shown.forEach((note,slot)=>{
+        const base=staffY(note),x=128+slot*30,y=base-note.staffStep*STEP,up=note.staffStep<4,color=outcomes[slot]==="good"?"#245b36":outcomes[slot]==="bad"?"#c43d35":slot===index?"#c87935":"#23463a";
+        for(let step=-2;step>=note.staffStep;step-=2) marks+=`<line x1="${x-13}" y1="${base-step*STEP}" x2="${x+13}" y2="${base-step*STEP}" stroke="#43534a" stroke-width="1.5"/>`;
+        for(let step=10;step<=note.staffStep;step+=2) marks+=`<line x1="${x-13}" y1="${base-step*STEP}" x2="${x+13}" y2="${base-step*STEP}" stroke="#43534a" stroke-width="1.5"/>`;
+        marks+=`${note.accidental?`<text x="${x-18}" y="${y+5}" font-size="20" font-weight="700" fill="${color}">${note.accidental==="#"?"♯":"♭"}</text>`:""}<line x1="${x+(up?7:-7)}" y1="${up?y-42:y}" x2="${x+(up?7:-7)}" y2="${up?y:y+42}" stroke="${color}" stroke-width="2"/><ellipse cx="${x}" cy="${y}" rx="10" ry="7" transform="rotate(-22 ${x} ${y})" fill="${color}"/>`;
+      });
+      // Treble clef curls around the G4 line; bass clef hangs from the top line with its dots around the F3 line.
+      const clefs=`${clefGlyph("𝄞",BOTTOM_Y-5.4*LINE_GAP,7*LINE_GAP)}${bassEnabled?bassClefGlyph():""}`;
+      staff.innerHTML=`<g fill="none" stroke="#43534a" stroke-width="1.5">${trebleLines}${bassLines}</g>${clefs}<g>${marks}</g>`;
+    }
+    function makeAnswers(){
+      const naturals=SOLFEGE.map((choice,i)=>`<button class="answer naturalKey" type="button" data-answer="${NATURAL_CLASSES[i]}" aria-label="${choice}, ${LETTERS[i]}"><span class="keySolfege">${choice}</span><small class="keyLetter">${LETTERS[i]}</small></button>`).join("");
+      const blackKeys=[{pitch:1,pos:14.2857,sharp:"Do#",flat:"Re♭",sharpLetter:"C#",flatLetter:"D♭"},{pitch:3,pos:28.5714,sharp:"Re#",flat:"Mi♭",sharpLetter:"D#",flatLetter:"E♭"},{pitch:6,pos:57.1429,sharp:"Fa#",flat:"Sol♭",sharpLetter:"F#",flatLetter:"G♭"},{pitch:8,pos:71.4286,sharp:"Sol#",flat:"La♭",sharpLetter:"G#",flatLetter:"A♭"},{pitch:10,pos:85.7143,sharp:"La#",flat:"Si♭",sharpLetter:"A#",flatLetter:"B♭"}];
+      const accidentals=blackKeys.filter(()=>sharpEnabled||flatEnabled).map(key=>{
+        const main=sharpEnabled?key.sharp:key.flat,letter=sharpEnabled?key.sharpLetter:key.flatLetter,alias=sharpEnabled&&flatEnabled?` / ${key.flat}`:"";
+        return `<button class="answer blackKey" style="left:${key.pos}%" type="button" data-answer="${key.pitch}" aria-label="${main}${alias}, ${letter}"><span class="keySolfege">${main}${alias}</span><small class="keyLetter">${letter}</small></button>`;
+      }).join("");
+      document.querySelector("#answers").innerHTML=`<div class="naturalKeys">${naturals}</div>${accidentals}`;
+      document.querySelectorAll(".answer").forEach(button=>button.addEventListener("click",()=>answer(button.dataset.answer)));
+    }
+    function playTone(note){
+      if(!soundEnabled)return;
+      const Audio=window.AudioContext||window.webkitAudioContext;
+      if(!Audio){feedback.textContent="Sound is not supported by this browser.";return;}
+      audioContext??=new Audio();
+      const play=()=>{
+        const now=audioContext.currentTime,frequency=440*Math.pow(2,(note.midi-69)/12),gain=audioContext.createGain();
+        gain.gain.setValueAtTime(.0001,now);gain.gain.linearRampToValueAtTime(.22,now+.025);gain.gain.exponentialRampToValueAtTime(.0001,now+.72);gain.connect(audioContext.destination);
+        [1,2,3].forEach((harmonic,i)=>{const oscillator=audioContext.createOscillator(),level=audioContext.createGain();oscillator.type="sine";oscillator.frequency.value=frequency*harmonic;level.gain.value=[1,.18,.06][i];oscillator.connect(level);level.connect(gain);oscillator.start(now);oscillator.stop(now+.74);});
+      };
+      if(audioContext.state==="running"){
+        if(feedback.textContent.startsWith("Tap once"))feedback.textContent="Read the note, then choose its solfege";
+        play();
+      }else if(soundUnlocked)audioContext.resume().then(play).catch(()=>{});
+    }
+    function playPresentedNote(){playTone(round[index]);}
+    function playErrorSound(){
+      if(!soundEnabled)return;
+      const Audio=window.AudioContext||window.webkitAudioContext;
+      if(!Audio)return;
+      audioContext??=new Audio();
+      const play=()=>{
+        const now=audioContext.currentTime,oscillator=audioContext.createOscillator(),gain=audioContext.createGain();
+        oscillator.type="triangle";oscillator.frequency.setValueAtTime(240,now);oscillator.frequency.exponentialRampToValueAtTime(150,now+.18);
+        gain.gain.setValueAtTime(.0001,now);gain.gain.linearRampToValueAtTime(.14,now+.012);gain.gain.exponentialRampToValueAtTime(.0001,now+.2);
+        oscillator.connect(gain);gain.connect(audioContext.destination);oscillator.start(now);oscillator.stop(now+.21);
+      };
+      if(audioContext.state==="running")play();else if(soundUnlocked)audioContext.resume().then(play).catch(()=>{});
+    }
+    function unlockSound(){
+      if(!audioContext)return;
+      const wasSuspended=audioContext.state!=="running";
+      audioContext.resume().then(()=>{
+        if(!soundUnlocked||wasSuspended||feedback.textContent.startsWith("Tap once")){
+          soundUnlocked=true;
+          feedback.textContent="Read the note, then choose its solfege";
+          playPresentedNote();
+        }
+      }).catch(()=>{});
+    }
+    function answer(choice){
+      if(!active||locked)return;locked=true;
+      const note=round[index],correct=Number(choice)===note.midi%12;
+      if(!correct)playErrorSound();
+      outcomes[index]=correct?"good":"bad";
+      feedback.className=`feedback ${correct?"good":"bad"}`;
+      feedback.textContent=correct?`Correct! ${note.solfege} (${note.name}${note.octave})`:`That was ${note.solfege} (${note.name}${note.octave})`;
+      if(correct)score++;
+      document.querySelector("#score").textContent=score;
+      document.querySelectorAll(".answer").forEach(button=>button.disabled=true);
+      noteTimer=setTimeout(()=>{
+        if(!active)return;
+        if(index+1===TOTAL){round=makeRound(note.midi);outcomes=[];index=0;}
+        else index++;
+        feedback.className="feedback";feedback.textContent="";
+        locked=false;makeAnswers();drawStaff();playPresentedNote();noteTimer=null;
+      },300);
+      drawStaff();
+    }
+    function finishGame(){
+      active=false;locked=true;clearInterval(timer);timer=null;
+      if(noteTimer){clearTimeout(noteTimer);noteTimer=null;}
+      document.querySelector("#time").textContent="0:00";
+      document.querySelector("#timeStat").classList.add("urgent");
+      document.querySelector("#answerArea").hidden=true;
+      const start=document.querySelector("#start");start.hidden=false;start.textContent="PLAY AGAIN";
+      feedback.className="feedback";feedback.textContent=`Time's up! You recognised ${score} ${score===1?"note":"notes"}.`;
+      document.querySelectorAll(".octaveChoice,.accidentalToggle").forEach(button=>button.disabled=false);
+      if(score>(Number(bestScores[selectedRange])||0)){bestScores[selectedRange]=score;writeStorage("noteTrainerBestScoresRange",bestScores);renderSettings();}
+      drawStaff();
+    }
+    function startGame(){
+      if(timer)clearInterval(timer);if(noteTimer)clearTimeout(noteTimer);
+      active=true;locked=false;round=makeRound();outcomes=[];index=0;score=0;endAt=Date.now()+GAME_SECONDS*1000;
+      document.querySelector("#score").textContent="0";
+      document.querySelector("#time").textContent="0:40";
+      document.querySelector("#timeStat").classList.remove("urgent");
+      document.querySelector("#start").hidden=true;
+      document.querySelector("#answerArea").hidden=false;
+      document.querySelectorAll(".octaveChoice").forEach(button=>button.disabled=true);
+      document.querySelectorAll(".accidentalToggle").forEach(button=>button.disabled=true);
+      feedback.className="feedback";feedback.textContent="";
+      makeAnswers();drawStaff();
+      soundUnlocked=true;playPresentedNote();
+      timer=setInterval(()=>{
+        const remainingMs=Math.max(0,endAt-Date.now()),remainingSeconds=Math.ceil(remainingMs/1000);
+        document.querySelector("#time").textContent=remainingMs<=10000?(remainingMs/1000).toFixed(2):`${Math.floor(remainingSeconds/60)}:${String(remainingSeconds%60).padStart(2,"0")}`;
+        document.querySelector("#timeStat").classList.toggle("urgent",remainingMs<=10000);
+        if(remainingMs===0)finishGame();
+      },50);
+    }
+    function renderSettings(){
+      const soundButton=document.querySelector("#soundToggle");
+      soundButton.textContent=soundEnabled?"SOUND ON":"SOUND OFF";
+      soundButton.setAttribute("aria-pressed",String(soundEnabled));
+      document.querySelector("#sharpToggle").setAttribute("aria-pressed",String(sharpEnabled));
+      document.querySelector("#flatToggle").setAttribute("aria-pressed",String(flatEnabled));
+      document.querySelector("#bassToggle").setAttribute("aria-pressed",String(bassEnabled));
+      document.querySelectorAll(".octaveChoice").forEach(button=>{
+        const selected=button.dataset.range===selectedRange;
+        button.classList.toggle("selected",selected);button.setAttribute("aria-pressed",String(selected));
+      });
+      const range=RANGES[selectedRange],label=midi=>SHARP_LETTERS[midi%12]+(Math.floor(midi/12)-1),bounds=clef=>`${label(range[clef][0])}–${label(range[clef][1])}`;
+      document.querySelector("#rangeBounds").textContent=`Notes tested: ${bassEnabled?`bass ${bounds("bass")} · `:""}treble ${bounds("treble")}${selectedRange==="normal"?" (no ledger lines)":""}`;
+      document.querySelector("#bestScores").innerHTML=`<strong>BEST SCORES</strong> · ${RANGE_NAMES.map(name=>`${name}: ${Number(bestScores[name])||"—"}`).join(" · ")}`;
+    }
+    function selectRange(range){
+      if(active)return;
+      selectedRange=range;NOTES=makeNotes();round=[];outcomes=[];index=0;score=0;
+      document.querySelector("#score").textContent="0";document.querySelector("#time").textContent="0:40";document.querySelector("#timeStat").classList.remove("urgent");
+      document.querySelector("#answerArea").hidden=true;
+      const start=document.querySelector("#start");start.hidden=false;start.textContent="START GAME";
+      feedback.className="feedback";feedback.textContent="Identify as many notes as you can in 40 seconds.";
+      writeStorage("noteTrainerSettings",{range:selectedRange,sound:soundEnabled,sharps:sharpEnabled,flats:flatEnabled,bassClef:bassEnabled});
+      renderSettings();drawStaff();
+    }
+    function toggleSound(){
+      soundEnabled=!soundEnabled;
+      writeStorage("noteTrainerSettings",{range:selectedRange,sound:soundEnabled,sharps:sharpEnabled,flats:flatEnabled,bassClef:bassEnabled});renderSettings();
+      if(active&&soundEnabled){soundUnlocked=true;playPresentedNote();}
+    }
+    function toggleAccidental(kind){
+      if(active)return;
+      if(kind==="sharp")sharpEnabled=!sharpEnabled;else flatEnabled=!flatEnabled;
+      NOTES=makeNotes();round=[];outcomes=[];index=0;
+      writeStorage("noteTrainerSettings",{range:selectedRange,sound:soundEnabled,sharps:sharpEnabled,flats:flatEnabled,bassClef:bassEnabled});
+      document.querySelector("#answerArea").hidden=true;
+      const start=document.querySelector("#start");start.hidden=false;start.textContent="START GAME";
+      feedback.className="feedback";feedback.textContent="Identify as many notes as you can in 40 seconds.";
+      renderSettings();drawStaff();
+    }
+    function toggleBassClef(){
+      if(active)return;
+      bassEnabled=!bassEnabled;NOTES=makeNotes();round=[];outcomes=[];index=0;
+      writeStorage("noteTrainerSettings",{range:selectedRange,sound:soundEnabled,sharps:sharpEnabled,flats:flatEnabled,bassClef:bassEnabled});
+      document.querySelector("#answerArea").hidden=true;
+      const start=document.querySelector("#start");start.hidden=false;start.textContent="START GAME";
+      feedback.className="feedback";feedback.textContent="Identify as many notes as you can in 40 seconds.";
+      renderSettings();drawStaff();
+    }
+    function handleKeyboardAnswer(event){
+      if(!active||locked||event.repeat)return;
+      const key=event.key.toLowerCase(),naturalKeys={c:0,v:2,b:4,n:5,m:7,",":9,".":11},accidentalKeys={f:1,g:3,h:6,k:8,l:10};
+      let pitchClass=naturalKeys[key];
+      if(pitchClass===undefined&&(sharpEnabled||flatEnabled))pitchClass=accidentalKeys[key];
+      if(pitchClass===undefined)return;
+      event.preventDefault();answer(String(pitchClass));
+    }
+    document.querySelector("#start").addEventListener("click",startGame);
+    document.querySelector("#soundToggle").addEventListener("click",toggleSound);
+    document.querySelector("#sharpToggle").addEventListener("click",()=>toggleAccidental("sharp"));
+    document.querySelector("#flatToggle").addEventListener("click",()=>toggleAccidental("flat"));
+    document.querySelector("#bassToggle").addEventListener("click",toggleBassClef);
+    document.querySelectorAll(".octaveChoice").forEach(button=>button.addEventListener("click",()=>selectRange(button.dataset.range)));
+    document.addEventListener("keydown",handleKeyboardAnswer);
+    document.addEventListener("pointerdown",unlockSound,{capture:true});
+    document.addEventListener("keydown",unlockSound,{capture:true});
+    renderSettings();
+    drawStaff();
+    if("serviceWorker" in navigator&&location.protocol==="https:")navigator.serviceWorker.register("sw.js").catch(()=>{});
+  </script>
+</body>
+</html>
