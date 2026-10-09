@@ -134,7 +134,8 @@
     const VOICE_PREFIXES=[[/^d/,0],[/^r/,2],[/^m/,4],[/^(f|ph)/,5],[/^s(o|au|eau|eu)/,7],[/^l/,9],[/^(s|c)(i|y|e)|^sc/,11]];
     const VOICE_PROMPT="● Listening — say the note name (do, ré, mi, fa, sol, la, si)";
     const VOICE_SHIFTS={diese:1,dieses:1,dieze:1,diez:1,sharp:1,bemol:-1,bemols:-1,flat:-1};
-    let voiceEnabled=Boolean(SpeechRecognizer)&&savedSettings?.voice===true,recognizer=null,voiceConsumed=[],voicePending=null;
+    let voiceEnabled=Boolean(SpeechRecognizer)&&savedSettings?.voice===true,recognizer=null,voiceConsumed=[],voicePending=null,voiceRestart=null,voiceLanguage="fr-FR";
+    const ANDROID=/Android/i.test(navigator.userAgent);
     let sharpEnabled=savedSettings?.sharps===true,flatEnabled=savedSettings?.flats===true;
     let bassEnabled=savedSettings?.bassClef===true;
     let bestScores=loadedBestScores&&typeof loadedBestScores==="object"?loadedBestScores:{};
@@ -397,29 +398,40 @@
       voiceEnabled=!voiceEnabled;saveSettings();renderSettings();
       if(active){if(voiceEnabled)startListening();else stopListening();}
     }
+    function setVoiceStatus(text){const status=document.querySelector("#voiceStatus");status.textContent=text;status.hidden=false;}
+    function scheduleListening(delay){
+      clearTimeout(voiceRestart);
+      voiceRestart=setTimeout(()=>{if(active&&voiceEnabled)startListening();},delay);
+    }
     function startListening(){
       if(!voiceEnabled||!SpeechRecognizer||recognizer)return;
-      recognizer=new SpeechRecognizer();
-      recognizer.lang="fr-FR";recognizer.continuous=true;recognizer.interimResults=true;recognizer.maxAlternatives=5;
-      recognizer.onresult=handleVoiceResult;
-      recognizer.onerror=event=>{
-        if(event.error!=="not-allowed"&&event.error!=="service-not-allowed")return;
-        voiceEnabled=false;saveSettings();renderSettings();stopListening();
-        feedback.className="feedback bad";feedback.textContent="Microphone access was refused, so voice answers are off.";
+      const session=recognizer=new SpeechRecognizer();
+      // Android Chrome only handles one phrase per session, so there each phrase gets a fresh session.
+      if(voiceLanguage)session.lang=voiceLanguage;
+      session.continuous=!ANDROID;session.interimResults=true;session.maxAlternatives=5;
+      session.onresult=handleVoiceResult;
+      session.onnomatch=()=>{setVoiceStatus("● Heard something, but no words");answer("-1","?");};
+      session.onerror=event=>{
+        if(event.error==="not-allowed"||event.error==="service-not-allowed"){
+          voiceEnabled=false;saveSettings();renderSettings();stopListening();
+          feedback.className="feedback bad";feedback.textContent="Microphone access was refused, so voice answers are off.";
+        }else if(event.error==="language-not-supported"&&voiceLanguage){voiceLanguage="";setVoiceStatus("● French is not available here, using the phone's language");}
+        else if(event.error!=="no-speech"&&event.error!=="aborted")setVoiceStatus(`● Voice problem: ${event.error}`);
       };
-      // The browser ends a session after a pause, so keep reopening it for as long as the game runs.
-      recognizer.onend=()=>{recognizer=null;voiceConsumed=[];if(active&&voiceEnabled)startListening();else document.querySelector("#voiceStatus").hidden=true;};
+      // Sessions end after a phrase or a pause, so keep reopening one for as long as the game runs.
+      session.onend=()=>{if(recognizer!==session)return;recognizer=null;voiceConsumed=[];scheduleListening(120);};
       voiceConsumed=[];
-      try{recognizer.start();const status=document.querySelector("#voiceStatus");status.textContent=VOICE_PROMPT;status.hidden=false;}catch{recognizer=null;}
+      try{session.start();if(document.querySelector("#voiceStatus").hidden)setVoiceStatus(VOICE_PROMPT);}
+      catch{recognizer=null;scheduleListening(400);}
     }
     function stopListening(){
-      clearTimeout(voicePending);voicePending=null;
+      clearTimeout(voicePending);voicePending=null;clearTimeout(voiceRestart);voiceRestart=null;
       document.querySelector("#voiceStatus").hidden=true;
       if(!recognizer)return;
-      const stopping=recognizer;recognizer=null;stopping.onend=null;stopping.onresult=null;
+      const stopping=recognizer;recognizer=null;stopping.onend=null;stopping.onresult=null;stopping.onnomatch=null;stopping.onerror=null;
       try{stopping.abort();}catch{}
     }
-    function voiceWords(transcript){return transcript.toLowerCase().normalize("NFD").replace(/[̀-ͯ]/g,"").split(/[^a-z0-9]+/).filter(Boolean);}
+    function voiceWords(transcript){return transcript.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g,"").split(/[^a-z0-9]+/).filter(Boolean);}
     function voicePitch(word){
       if(word===undefined||word in VOICE_SHIFTS)return undefined;
       if(word in VOICE_NOTES)return VOICE_NOTES[word];
@@ -431,7 +443,7 @@
         const result=event.results[i],alternatives=Array.from({length:result.length},(_,k)=>voiceWords(result[k].transcript)),words=alternatives[0];
         if(!words.length)continue;
         const from=voiceConsumed[i]||0,heard=words.slice(from).join(" ");
-        if(heard)document.querySelector("#voiceStatus").textContent=`● Heard: “${heard}”`;
+        if(heard)setVoiceStatus(`● Heard: “${heard}”`);
         // The recogniser's other guesses for the same word count too.
         const pitchAt=position=>alternatives.map(guess=>voicePitch(guess[position])).find(pitch=>pitch!==undefined);
         let position=from;
