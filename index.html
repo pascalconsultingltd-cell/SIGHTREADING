@@ -135,7 +135,6 @@
     const VOICE_PROMPT="● Listening — say the note name (do, ré, mi, fa, sol, la, si)";
     const VOICE_SHIFTS={diese:1,dieses:1,dieze:1,diez:1,sharp:1,bemol:-1,bemols:-1,flat:-1};
     let voiceEnabled=Boolean(SpeechRecognizer)&&savedSettings?.voice===true,recognizer=null,voiceConsumed=[],voicePending=null,voiceRestart=null,voiceLanguage="fr-FR";
-    const ANDROID=/Android/i.test(navigator.userAgent);
     let sharpEnabled=savedSettings?.sharps===true,flatEnabled=savedSettings?.flats===true;
     let bassEnabled=savedSettings?.bassClef===true;
     let bestScores=loadedBestScores&&typeof loadedBestScores==="object"?loadedBestScores:{};
@@ -406,9 +405,9 @@
     function startListening(){
       if(!voiceEnabled||!SpeechRecognizer||recognizer)return;
       const session=recognizer=new SpeechRecognizer();
-      // Android Chrome only handles one phrase per session, so there each phrase gets a fresh session.
+      // Ask for one session for the whole game; a phone that closes it anyway is reopened by onend below.
       if(voiceLanguage)session.lang=voiceLanguage;
-      session.continuous=!ANDROID;session.interimResults=true;session.maxAlternatives=5;
+      session.continuous=true;session.interimResults=true;session.maxAlternatives=5;
       session.onresult=handleVoiceResult;
       session.onnomatch=()=>{setVoiceStatus("● Heard something, but no words");answer("-1","?");};
       session.onerror=event=>{
@@ -442,7 +441,9 @@
       for(let i=event.resultIndex;i<event.results.length;i++){
         const result=event.results[i],alternatives=Array.from({length:result.length},(_,k)=>voiceWords(result[k].transcript)),words=alternatives[0];
         if(!words.length)continue;
-        const from=voiceConsumed[i]||0,heard=words.slice(from).join(" ");
+        // Some phones repeat everything said so far in each new result, so skip what the previous one already held.
+        const earlier=i>0?voiceWords(event.results[i-1][0].transcript):[],repeats=earlier.length>0&&earlier.every((word,k)=>words[k]===word);
+        const from=Math.max(voiceConsumed[i]||0,repeats?earlier.length:0),heard=words.slice(from).join(" ");
         if(heard)setVoiceStatus(`● Heard: “${heard}”`);
         // The recogniser's other guesses for the same word count too.
         const pitchAt=position=>alternatives.map(guess=>voicePitch(guess[position])).find(pitch=>pitch!==undefined);
