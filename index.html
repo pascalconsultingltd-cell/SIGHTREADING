@@ -31,6 +31,8 @@
     .settingTitle{font-size:10px;font-weight:850;letter-spacing:1px;color:#829087}
     .soundToggle,.octaveChoice{border:1px solid #e2e8df;border-radius:12px;background:#f7f8f4;color:#52665a;font-weight:800}
     .soundToggle{min-width:92px;padding:9px 12px;font-size:12px}
+    .soundToggle:disabled{opacity:.55;cursor:default}
+    .voiceStatus{margin:0 2px 8px;color:#c43d35;font-size:11px;font-weight:750}
     .soundToggle[aria-pressed="true"],.octaveChoice.selected{border-color:#173b32;background:#173b32;color:#fff}
     .octaveChoices{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:6px;margin-top:8px}
     .octaveChoice{min-height:38px;padding:4px 2px;font-size:12px}
@@ -86,6 +88,7 @@
     </section>
     <section class="settings" aria-label="Game settings">
       <div class="settingLine"><span class="settingTitle">NOTE SOUND</span><button class="soundToggle" id="soundToggle" type="button" aria-pressed="true">SOUND ON</button></div>
+      <div class="settingLine" style="margin-top:10px"><span class="settingTitle">VOICE ANSWERS</span><button class="soundToggle" id="voiceToggle" type="button" aria-pressed="false">VOICE OFF</button></div>
       <div class="settingLine" style="margin-top:10px"><span class="settingTitle">ACCIDENTALS</span><div class="accidentalToggles"><button class="accidentalToggle" id="sharpToggle" type="button" aria-pressed="false"># SHARPS</button><button class="accidentalToggle" id="flatToggle" type="button" aria-pressed="false">♭ FLATS</button></div></div>
       <div class="settingLine" style="margin-top:10px"><span class="settingTitle">CLEFS</span><button class="accidentalToggle" id="bassToggle" type="button" aria-pressed="false">ADD BASS CLEF</button></div>
       <div class="settingTitle" style="margin-top:12px">NOTE RANGE</div>
@@ -105,6 +108,7 @@
     <section class="review" id="review" aria-label="Mistakes from the last game" hidden></section>
     <section class="answerArea" id="answerArea" hidden>
       <p class="answerLabel">Choose the note <small class="keyboardHint">Keyboard: C V B N M , . · accidentals: F G H K L</small></p>
+      <p class="voiceStatus" id="voiceStatus" hidden>● Listening — say the note name (do, ré, mi, fa, sol, la, si)</p>
       <div class="piano" id="answers" aria-label="Solfege answers"></div>
     </section>
     <footer>Sight-reading · normal or extended range · 40 seconds</footer>
@@ -117,11 +121,17 @@
     // MIDI bounds per clef: normal stays on the staff (no ledger lines), extended is bass C2–G4 and treble E3–E6.
     const RANGE_NAMES=["normal","extended"],RANGES={normal:{bass:[41,59],treble:[62,79]},extended:{bass:[36,67],treble:[52,88]}},CLEF_FONT="'Noto Music','Segoe UI Symbol',serif";
     const TOTAL=10,GAME_SECONDS=40,LINE_GAP=16,STEP=LINE_GAP/2,BOTTOM_Y=136;
+    function saveSettings(){writeStorage("noteTrainerSettings",{range:selectedRange,sound:soundEnabled,voice:voiceEnabled,sharps:sharpEnabled,flats:flatEnabled,bassClef:bassEnabled});}
     function readStorage(key,fallback){try{const value=localStorage.getItem(key);return value===null?fallback:JSON.parse(value);}catch{return fallback;}}
     function writeStorage(key,value){try{localStorage.setItem(key,JSON.stringify(value));}catch{}}
     const savedSettings=readStorage("noteTrainerSettings",{}),loadedBestScores=readStorage("noteTrainerBestScoresRange",{});
     let selectedRange=RANGE_NAMES.includes(savedSettings?.range)?savedSettings.range:"normal";
     let soundEnabled=savedSettings?.sound!==false;
+    const SpeechRecognizer=window.SpeechRecognition||window.webkitSpeechRecognition;
+    // Spoken solfège as the French recogniser tends to spell it (accents stripped), mapped to pitch classes.
+    const VOICE_NOTES={do:0,dos:0,dot:0,doh:0,re:2,res:2,rez:2,raie:2,rai:2,ray:2,mi:4,mie:4,mis:4,mit:4,fa:5,fat:5,far:5,sol:7,sole:7,sols:7,saule:7,la:9,las:9,lah:9,si:11,scie:11,six:11,ci:11,sis:11};
+    const VOICE_SHIFTS={diese:1,dieses:1,dieze:1,diez:1,sharp:1,bemol:-1,bemols:-1,flat:-1};
+    let voiceEnabled=Boolean(SpeechRecognizer)&&savedSettings?.voice===true,recognizer=null,voiceConsumed=[],voicePending=null;
     let sharpEnabled=savedSettings?.sharps===true,flatEnabled=savedSettings?.flats===true;
     let bassEnabled=savedSettings?.bassClef===true;
     let bestScores=loadedBestScores&&typeof loadedBestScores==="object"?loadedBestScores:{};
@@ -294,7 +304,7 @@
       if(noteTimer){clearTimeout(noteTimer);noteTimer=null;}
       document.querySelector("#time").textContent="0:00";
       document.querySelector("#timeStat").classList.add("urgent");
-      document.querySelector("#answerArea").hidden=true;
+      document.querySelector("#answerArea").hidden=true;stopListening();
       const start=document.querySelector("#start");start.hidden=false;start.textContent="PLAY AGAIN";
       feedback.className="feedback";feedback.textContent=`Time's up! You recognised ${score} ${score===1?"note":"notes"}.`;
       document.querySelectorAll(".octaveChoice,.accidentalToggle").forEach(button=>button.disabled=false);
@@ -315,7 +325,7 @@
       document.querySelectorAll(".accidentalToggle").forEach(button=>button.disabled=true);
       feedback.className="feedback";feedback.textContent="";
       makeAnswers();drawStaff();
-      soundUnlocked=true;playPresentedNote();
+      soundUnlocked=true;playPresentedNote();startListening();
       timer=setInterval(()=>{
         const remainingMs=Math.max(0,endAt-Date.now()),remainingSeconds=Math.ceil(remainingMs/1000);
         document.querySelector("#time").textContent=remainingMs<=10000?(remainingMs/1000).toFixed(2):`${Math.floor(remainingSeconds/60)}:${String(remainingSeconds%60).padStart(2,"0")}`;
@@ -349,6 +359,10 @@
       const soundButton=document.querySelector("#soundToggle");
       soundButton.textContent=soundEnabled?"SOUND ON":"SOUND OFF";
       soundButton.setAttribute("aria-pressed",String(soundEnabled));
+      const voiceButton=document.querySelector("#voiceToggle");
+      voiceButton.disabled=!SpeechRecognizer;
+      voiceButton.textContent=!SpeechRecognizer?"NOT AVAILABLE":voiceEnabled?"VOICE ON":"VOICE OFF";
+      voiceButton.setAttribute("aria-pressed",String(voiceEnabled));
       document.querySelector("#sharpToggle").setAttribute("aria-pressed",String(sharpEnabled));
       document.querySelector("#flatToggle").setAttribute("aria-pressed",String(flatEnabled));
       document.querySelector("#bassToggle").setAttribute("aria-pressed",String(bassEnabled));
@@ -367,19 +381,64 @@
       document.querySelector("#answerArea").hidden=true;
       const start=document.querySelector("#start");start.hidden=false;start.textContent="START GAME";
       feedback.className="feedback";feedback.textContent="Identify as many notes as you can in 40 seconds.";
-      writeStorage("noteTrainerSettings",{range:selectedRange,sound:soundEnabled,sharps:sharpEnabled,flats:flatEnabled,bassClef:bassEnabled});
+      saveSettings();
       renderSettings();drawStaff();
     }
     function toggleSound(){
       soundEnabled=!soundEnabled;
-      writeStorage("noteTrainerSettings",{range:selectedRange,sound:soundEnabled,sharps:sharpEnabled,flats:flatEnabled,bassClef:bassEnabled});renderSettings();
+      saveSettings();renderSettings();
       if(active&&soundEnabled){soundUnlocked=true;playPresentedNote();}
+    }
+    function toggleVoice(){
+      if(!SpeechRecognizer)return;
+      voiceEnabled=!voiceEnabled;saveSettings();renderSettings();
+      if(active){if(voiceEnabled)startListening();else stopListening();}
+    }
+    function startListening(){
+      if(!voiceEnabled||!SpeechRecognizer||recognizer)return;
+      recognizer=new SpeechRecognizer();
+      recognizer.lang="fr-FR";recognizer.continuous=true;recognizer.interimResults=true;recognizer.maxAlternatives=1;
+      recognizer.onresult=handleVoiceResult;
+      recognizer.onerror=event=>{
+        if(event.error!=="not-allowed"&&event.error!=="service-not-allowed")return;
+        voiceEnabled=false;saveSettings();renderSettings();stopListening();
+        feedback.className="feedback bad";feedback.textContent="Microphone access was refused, so voice answers are off.";
+      };
+      // The browser ends a session after a pause, so keep reopening it for as long as the game runs.
+      recognizer.onend=()=>{recognizer=null;voiceConsumed=[];if(active&&voiceEnabled)startListening();else document.querySelector("#voiceStatus").hidden=true;};
+      voiceConsumed=[];
+      try{recognizer.start();document.querySelector("#voiceStatus").hidden=false;}catch{recognizer=null;}
+    }
+    function stopListening(){
+      clearTimeout(voicePending);voicePending=null;
+      document.querySelector("#voiceStatus").hidden=true;
+      if(!recognizer)return;
+      const stopping=recognizer;recognizer=null;stopping.onend=null;stopping.onresult=null;
+      try{stopping.abort();}catch{}
+    }
+    function handleVoiceResult(event){
+      clearTimeout(voicePending);voicePending=null;
+      for(let i=event.resultIndex;i<event.results.length;i++){
+        const result=event.results[i],words=result[0].transcript.toLowerCase().normalize("NFD").replace(/[̀-ͯ]/g,"").split(/[^a-z]+/).filter(Boolean);
+        for(let position=voiceConsumed[i]||0;position<words.length;position++){
+          const pitchClass=VOICE_NOTES[words[position]];
+          if(pitchClass===undefined)continue;
+          const shift=VOICE_SHIFTS[words[position+1]],isLast=position===words.length-1;
+          // With accidentals on, "do" may still be followed by "dièse", so give the rest of the phrase a moment to arrive.
+          if(isLast&&!result.isFinal&&(sharpEnabled||flatEnabled)){
+            voicePending=setTimeout(()=>{voicePending=null;voiceConsumed[i]=position+1;answer(String(pitchClass));},450);
+            return;
+          }
+          voiceConsumed[i]=position+(shift?2:1);
+          answer(String((pitchClass+(shift||0)+12)%12));
+        }
+      }
     }
     function toggleAccidental(kind){
       if(active)return;
       if(kind==="sharp")sharpEnabled=!sharpEnabled;else flatEnabled=!flatEnabled;
       NOTES=makeNotes();round=[];outcomes=[];index=0;clearReview();
-      writeStorage("noteTrainerSettings",{range:selectedRange,sound:soundEnabled,sharps:sharpEnabled,flats:flatEnabled,bassClef:bassEnabled});
+      saveSettings();
       document.querySelector("#answerArea").hidden=true;
       const start=document.querySelector("#start");start.hidden=false;start.textContent="START GAME";
       feedback.className="feedback";feedback.textContent="Identify as many notes as you can in 40 seconds.";
@@ -388,7 +447,7 @@
     function toggleBassClef(){
       if(active)return;
       bassEnabled=!bassEnabled;NOTES=makeNotes();round=[];outcomes=[];index=0;clearReview();
-      writeStorage("noteTrainerSettings",{range:selectedRange,sound:soundEnabled,sharps:sharpEnabled,flats:flatEnabled,bassClef:bassEnabled});
+      saveSettings();
       document.querySelector("#answerArea").hidden=true;
       const start=document.querySelector("#start");start.hidden=false;start.textContent="START GAME";
       feedback.className="feedback";feedback.textContent="Identify as many notes as you can in 40 seconds.";
@@ -405,6 +464,7 @@
     document.querySelector("#start").addEventListener("click",startGame);
     document.querySelector("#reviewToggle").addEventListener("click",toggleReview);
     document.querySelector("#soundToggle").addEventListener("click",toggleSound);
+    document.querySelector("#voiceToggle").addEventListener("click",toggleVoice);
     document.querySelector("#sharpToggle").addEventListener("click",()=>toggleAccidental("sharp"));
     document.querySelector("#flatToggle").addEventListener("click",()=>toggleAccidental("flat"));
     document.querySelector("#bassToggle").addEventListener("click",toggleBassClef);
