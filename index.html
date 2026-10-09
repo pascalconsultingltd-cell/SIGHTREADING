@@ -46,6 +46,13 @@
     .feedback.good{background:#e7f3d1;color:#315d2e}
     .feedback.bad{background:#f8e9e3;color:#9a4a36}
     .start{display:block;width:100%;min-height:54px;margin-top:10px;border:0;border-radius:16px;background:#173b32;color:#fff;font-size:15px;font-weight:850;letter-spacing:1px}
+    .reviewButton{display:block;width:100%;min-height:46px;margin-top:8px;border:1px solid #c43d35;border-radius:16px;background:#fff;color:#c43d35;font-size:13px;font-weight:850;letter-spacing:1px}
+    .review{margin-top:8px;padding:6px 14px;background:#fff;border-radius:20px}
+    .mistake{display:flex;align-items:center;gap:12px;padding:6px 0;border-top:1px solid #eef1ea}
+    .mistake:first-child{border-top:0}
+    .mistake svg{flex:none;width:104px;height:auto}
+    .mistakeRight{font-size:16px;font-weight:850;color:#245b36}
+    .mistakeWrong{margin-top:2px;font-size:12px;color:#9a4a36}
     .start:active{transform:scale(.98);background:#285444}
     .answerArea{margin-top:12px}
     .answerLabel{margin:0 2px 8px;font-size:13px;font-weight:750;color:#52665a}
@@ -94,6 +101,8 @@
       <div class="feedback" id="feedback" aria-live="polite">Identify as many notes as you can in 40 seconds.</div>
     </section>
     <button class="start" id="start" type="button">START GAME</button>
+    <button class="reviewButton" id="reviewToggle" type="button" aria-expanded="false" hidden>REVIEW MISTAKES</button>
+    <section class="review" id="review" aria-label="Mistakes from the last game" hidden></section>
     <section class="answerArea" id="answerArea" hidden>
       <p class="answerLabel">Choose the note <small class="keyboardHint">Keyboard: C V B N M , . · accidentals: F G H K L</small></p>
       <div class="piano" id="answers" aria-label="Solfege answers"></div>
@@ -116,7 +125,7 @@
     let sharpEnabled=savedSettings?.sharps===true,flatEnabled=savedSettings?.flats===true;
     let bassEnabled=savedSettings?.bassClef===true;
     let bestScores=loadedBestScores&&typeof loadedBestScores==="object"?loadedBestScores:{};
-    let NOTES=makeNotes(),round=[],outcomes=[],index=0,score=0,locked=false,active=false,timer=null,noteTimer=null,endAt=0,audioContext=null,soundUnlocked=false;
+    let NOTES=makeNotes(),round=[],outcomes=[],mistakes=[],index=0,score=0,locked=false,active=false,timer=null,noteTimer=null,endAt=0,audioContext=null,soundUnlocked=false;
     const staff=document.querySelector("#staff"),feedback=document.querySelector("#feedback");
 
     // Extended range needs more room between the staves for the ledger lines of both.
@@ -182,17 +191,30 @@
       if(!dots)return clefGlyph("𝄢",top,3.5*LINE_GAP);
       return `<text x="${30+dots.dx}" y="${top+LINE_GAP+dots.dy}" font-size="${dots.size}" font-family="${CLEF_FONT}" fill="#233c32">𝄢</text>`;
     }
+    // Ledger lines, accidental, stem and head of one note at horizontal position x.
+    function noteMarks(note,x,color){
+      const base=staffY(note),y=base-note.staffStep*STEP,up=note.staffStep<4;
+      let marks="";
+      for(let step=-2;step>=note.staffStep;step-=2) marks+=`<line x1="${x-13}" y1="${base-step*STEP}" x2="${x+13}" y2="${base-step*STEP}" stroke="#43534a" stroke-width="1.5"/>`;
+      for(let step=10;step<=note.staffStep;step+=2) marks+=`<line x1="${x-13}" y1="${base-step*STEP}" x2="${x+13}" y2="${base-step*STEP}" stroke="#43534a" stroke-width="1.5"/>`;
+      return `${marks}${note.accidental?`<text x="${x-18}" y="${y+5}" font-size="20" font-weight="700" fill="${color}">${note.accidental==="#"?"♯":"♭"}</text>`:""}<line x1="${x+(up?7:-7)}" y1="${up?y-42:y}" x2="${x+(up?7:-7)}" y2="${up?y:y+42}" stroke="${color}" stroke-width="2"/><ellipse cx="${x}" cy="${y}" rx="10" ry="7" transform="rotate(-22 ${x} ${y})" fill="${color}"/>`;
+    }
+    function staffY(note){return note.clef==="bass"?bassBottomY():BOTTOM_Y;}
+    // Where the correct name of a missed note is written: under the note, and clear of its staff.
+    function nameY(note){
+      const base=staffY(note),y=base-note.staffStep*STEP;
+      return Math.max(base+20,note.staffStep<4?y+22:y+56);
+    }
     function drawStaff(){
-      const shown=active?round.slice(0,index+1):[],trebleLines=[0,1,2,3,4].map(i=>`<line x1="24" y1="${BOTTOM_Y-4*LINE_GAP+i*LINE_GAP}" x2="414" y2="${BOTTOM_Y-4*LINE_GAP+i*LINE_GAP}"/>`).join(""),bassLines=bassEnabled?[0,1,2,3,4].map(i=>`<line x1="24" y1="${bassBottomY()-4*LINE_GAP+i*LINE_GAP}" x2="414" y2="${bassBottomY()-4*LINE_GAP+i*LINE_GAP}"/>`).join(""):"";
-      const staffY=note=>note.clef==="bass"?bassBottomY():BOTTOM_Y,positions=shown.map(note=>staffY(note)-note.staffStep*STEP);
-      const top=Math.min(18,...positions.map(y=>y-24)),bottom=Math.max(bassEnabled?bassBottomY()+18:BOTTOM_Y+32,...positions.map(y=>y+24));
+      const shown=round.slice(0,index+1),trebleLines=[0,1,2,3,4].map(i=>`<line x1="24" y1="${BOTTOM_Y-4*LINE_GAP+i*LINE_GAP}" x2="414" y2="${BOTTOM_Y-4*LINE_GAP+i*LINE_GAP}"/>`).join(""),bassLines=bassEnabled?[0,1,2,3,4].map(i=>`<line x1="24" y1="${bassBottomY()-4*LINE_GAP+i*LINE_GAP}" x2="414" y2="${bassBottomY()-4*LINE_GAP+i*LINE_GAP}"/>`).join(""):"";
+      const positions=shown.map(note=>staffY(note)-note.staffStep*STEP),labels=shown.filter((note,slot)=>outcomes[slot]==="bad").map(nameY);
+      const top=Math.min(18,...positions.map(y=>y-24)),bottom=Math.max(bassEnabled?bassBottomY()+18:BOTTOM_Y+32,...positions.map(y=>y+24),...labels.map(y=>y+8));
       staff.setAttribute("viewBox",`0 ${Math.floor(top)} 420 ${Math.ceil(bottom-top)}`);
       let marks="";
       shown.forEach((note,slot)=>{
-        const base=staffY(note),x=128+slot*30,y=base-note.staffStep*STEP,up=note.staffStep<4,color=outcomes[slot]==="good"?"#245b36":outcomes[slot]==="bad"?"#c43d35":slot===index?"#c87935":"#23463a";
-        for(let step=-2;step>=note.staffStep;step-=2) marks+=`<line x1="${x-13}" y1="${base-step*STEP}" x2="${x+13}" y2="${base-step*STEP}" stroke="#43534a" stroke-width="1.5"/>`;
-        for(let step=10;step<=note.staffStep;step+=2) marks+=`<line x1="${x-13}" y1="${base-step*STEP}" x2="${x+13}" y2="${base-step*STEP}" stroke="#43534a" stroke-width="1.5"/>`;
-        marks+=`${note.accidental?`<text x="${x-18}" y="${y+5}" font-size="20" font-weight="700" fill="${color}">${note.accidental==="#"?"♯":"♭"}</text>`:""}<line x1="${x+(up?7:-7)}" y1="${up?y-42:y}" x2="${x+(up?7:-7)}" y2="${up?y:y+42}" stroke="${color}" stroke-width="2"/><ellipse cx="${x}" cy="${y}" rx="10" ry="7" transform="rotate(-22 ${x} ${y})" fill="${color}"/>`;
+        const x=128+slot*30,missed=outcomes[slot]==="bad",color=outcomes[slot]==="good"?"#245b36":missed?"#c43d35":active&&slot===index?"#c87935":"#23463a";
+        marks+=noteMarks(note,x,color);
+        if(missed)marks+=`<text x="${x}" y="${nameY(note)}" text-anchor="middle" font-size="11" font-weight="800" fill="#c43d35" stroke="#fff" stroke-width="3" paint-order="stroke">${note.solfege}</text>`;
       });
       // Treble clef curls around the G4 line; bass clef hangs from the top line with its dots around the F3 line.
       const clefs=`${clefGlyph("𝄞",BOTTOM_Y-5.4*LINE_GAP,7*LINE_GAP)}${bassEnabled?bassClefGlyph():""}`;
@@ -251,7 +273,7 @@
     function answer(choice){
       if(!active||locked)return;locked=true;
       const note=round[index],correct=Number(choice)===note.midi%12;
-      if(!correct)playErrorSound();
+      if(!correct){playErrorSound();mistakes.push({note,chosen:Number(choice)});}
       outcomes[index]=correct?"good":"bad";
       feedback.className=`feedback ${correct?"good":"bad"}`;
       feedback.textContent=correct?`Correct! ${note.solfege} (${note.name}${note.octave})`:`That was ${note.solfege} (${note.name}${note.octave})`;
@@ -276,12 +298,14 @@
       const start=document.querySelector("#start");start.hidden=false;start.textContent="PLAY AGAIN";
       feedback.className="feedback";feedback.textContent=`Time's up! You recognised ${score} ${score===1?"note":"notes"}.`;
       document.querySelectorAll(".octaveChoice,.accidentalToggle").forEach(button=>button.disabled=false);
+      const reviewToggle=document.querySelector("#reviewToggle");
+      reviewToggle.hidden=mistakes.length===0;reviewToggle.textContent=`REVIEW MISTAKES (${mistakes.length})`;
       if(score>(Number(bestScores[selectedRange])||0)){bestScores[selectedRange]=score;writeStorage("noteTrainerBestScoresRange",bestScores);renderSettings();}
       drawStaff();
     }
     function startGame(){
       if(timer)clearInterval(timer);if(noteTimer)clearTimeout(noteTimer);
-      active=true;locked=false;round=makeRound();outcomes=[];index=0;score=0;endAt=Date.now()+GAME_SECONDS*1000;
+      clearReview();active=true;locked=false;round=makeRound();outcomes=[];index=0;score=0;endAt=Date.now()+GAME_SECONDS*1000;
       document.querySelector("#score").textContent="0";
       document.querySelector("#time").textContent="0:40";
       document.querySelector("#timeStat").classList.remove("urgent");
@@ -298,6 +322,28 @@
         document.querySelector("#timeStat").classList.toggle("urgent",remainingMs<=10000);
         if(remainingMs===0)finishGame();
       },50);
+    }
+    function clearReview(){
+      mistakes=[];
+      const reviewToggle=document.querySelector("#reviewToggle");
+      reviewToggle.hidden=true;reviewToggle.setAttribute("aria-expanded","false");
+      document.querySelector("#review").hidden=true;
+    }
+    // One missed note on its own small staff.
+    function mistakeStaff(note){
+      const base=staffY(note),y=base-note.staffStep*STEP,top=Math.min(base-4*LINE_GAP-26,y-48),bottom=Math.max(base+30,y+48);
+      const lines=[0,1,2,3,4].map(i=>`<line x1="24" y1="${base-i*LINE_GAP}" x2="152" y2="${base-i*LINE_GAP}"/>`).join(""),clef=note.clef==="bass"?bassClefGlyph():clefGlyph("𝄞",BOTTOM_Y-5.4*LINE_GAP,7*LINE_GAP);
+      return `<svg viewBox="20 ${Math.floor(top)} 136 ${Math.ceil(bottom-top)}" role="img" aria-label="${note.name}${note.accidental}${note.octave} on the ${note.clef} clef"><g fill="none" stroke="#43534a" stroke-width="1.5">${lines}</g>${clef}${noteMarks(note,116,"#c43d35")}</svg>`;
+    }
+    function toggleReview(){
+      const review=document.querySelector("#review"),reviewToggle=document.querySelector("#reviewToggle"),opening=review.hidden;
+      if(opening){
+        const useFlats=flatEnabled&&!sharpEnabled,names=useFlats?FLAT_NAMES:SHARP_NAMES,letters=useFlats?FLAT_LETTERS:SHARP_LETTERS;
+        review.innerHTML=mistakes.map(({note,chosen})=>`<div class="mistake">${mistakeStaff(note)}<div><div class="mistakeRight">${note.solfege} (${note.name}${note.accidental}${note.octave})</div><div class="mistakeWrong">You answered ${names[chosen]} (${letters[chosen]})</div></div></div>`).join("");
+      }
+      review.hidden=!opening;reviewToggle.setAttribute("aria-expanded",String(opening));
+      reviewToggle.textContent=`${opening?"HIDE":"REVIEW"} MISTAKES (${mistakes.length})`;
+      if(opening)review.scrollIntoView({behavior:"smooth",block:"nearest"});
     }
     function renderSettings(){
       const soundButton=document.querySelector("#soundToggle");
@@ -316,7 +362,7 @@
     }
     function selectRange(range){
       if(active)return;
-      selectedRange=range;NOTES=makeNotes();round=[];outcomes=[];index=0;score=0;
+      selectedRange=range;NOTES=makeNotes();round=[];outcomes=[];index=0;clearReview();score=0;
       document.querySelector("#score").textContent="0";document.querySelector("#time").textContent="0:40";document.querySelector("#timeStat").classList.remove("urgent");
       document.querySelector("#answerArea").hidden=true;
       const start=document.querySelector("#start");start.hidden=false;start.textContent="START GAME";
@@ -332,7 +378,7 @@
     function toggleAccidental(kind){
       if(active)return;
       if(kind==="sharp")sharpEnabled=!sharpEnabled;else flatEnabled=!flatEnabled;
-      NOTES=makeNotes();round=[];outcomes=[];index=0;
+      NOTES=makeNotes();round=[];outcomes=[];index=0;clearReview();
       writeStorage("noteTrainerSettings",{range:selectedRange,sound:soundEnabled,sharps:sharpEnabled,flats:flatEnabled,bassClef:bassEnabled});
       document.querySelector("#answerArea").hidden=true;
       const start=document.querySelector("#start");start.hidden=false;start.textContent="START GAME";
@@ -341,7 +387,7 @@
     }
     function toggleBassClef(){
       if(active)return;
-      bassEnabled=!bassEnabled;NOTES=makeNotes();round=[];outcomes=[];index=0;
+      bassEnabled=!bassEnabled;NOTES=makeNotes();round=[];outcomes=[];index=0;clearReview();
       writeStorage("noteTrainerSettings",{range:selectedRange,sound:soundEnabled,sharps:sharpEnabled,flats:flatEnabled,bassClef:bassEnabled});
       document.querySelector("#answerArea").hidden=true;
       const start=document.querySelector("#start");start.hidden=false;start.textContent="START GAME";
@@ -357,6 +403,7 @@
       event.preventDefault();answer(String(pitchClass));
     }
     document.querySelector("#start").addEventListener("click",startGame);
+    document.querySelector("#reviewToggle").addEventListener("click",toggleReview);
     document.querySelector("#soundToggle").addEventListener("click",toggleSound);
     document.querySelector("#sharpToggle").addEventListener("click",()=>toggleAccidental("sharp"));
     document.querySelector("#flatToggle").addEventListener("click",()=>toggleAccidental("flat"));
