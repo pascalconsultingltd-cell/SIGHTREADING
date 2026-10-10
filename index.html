@@ -32,7 +32,7 @@
     .soundToggle,.octaveChoice{border:1px solid #e2e8df;border-radius:12px;background:#f7f8f4;color:#52665a;font-weight:800}
     .soundToggle{min-width:92px;padding:9px 12px;font-size:12px}
     .soundToggle:disabled{opacity:.55;cursor:default}
-    .voiceStatus{margin:0 2px 8px;color:#c43d35;font-size:11px;font-weight:750}
+    .micStatus{margin:0 2px 8px;color:#c43d35;font-size:11px;font-weight:750}
     .soundToggle[aria-pressed="true"],.octaveChoice.selected{border-color:#173b32;background:#173b32;color:#fff}
     .octaveChoices{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:6px;margin-top:8px}
     .octaveChoice{min-height:38px;padding:4px 2px;font-size:12px}
@@ -88,7 +88,7 @@
     </section>
     <section class="settings" aria-label="Game settings">
       <div class="settingLine"><span class="settingTitle">NOTE SOUND</span><button class="soundToggle" id="soundToggle" type="button" aria-pressed="true">SOUND ON</button></div>
-      <div class="settingLine" style="margin-top:10px"><span class="settingTitle">VOICE ANSWERS</span><button class="soundToggle" id="voiceToggle" type="button" aria-pressed="false">VOICE OFF</button></div>
+      <div class="settingLine" style="margin-top:10px"><span class="settingTitle">SING OR PLAY THE NOTE</span><button class="soundToggle" id="micToggle" type="button" aria-pressed="false">MIC OFF</button></div>
       <div class="settingLine" style="margin-top:10px"><span class="settingTitle">ACCIDENTALS</span><div class="accidentalToggles"><button class="accidentalToggle" id="sharpToggle" type="button" aria-pressed="false"># SHARPS</button><button class="accidentalToggle" id="flatToggle" type="button" aria-pressed="false">♭ FLATS</button></div></div>
       <div class="settingLine" style="margin-top:10px"><span class="settingTitle">CLEFS</span><button class="accidentalToggle" id="bassToggle" type="button" aria-pressed="false">ADD BASS CLEF</button></div>
       <div class="settingTitle" style="margin-top:12px">NOTE RANGE</div>
@@ -108,7 +108,7 @@
     <section class="review" id="review" aria-label="Mistakes from the last game" hidden></section>
     <section class="answerArea" id="answerArea" hidden>
       <p class="answerLabel">Choose the note <small class="keyboardHint">Keyboard: C V B N M , . · accidentals: F G H K L</small></p>
-      <p class="voiceStatus" id="voiceStatus" hidden>● Listening — say the note name (do, ré, mi, fa, sol, la, si)</p>
+      <p class="micStatus" id="micStatus" hidden></p>
       <div class="piano" id="answers" aria-label="Solfege answers"></div>
     </section>
     <footer>Sight-reading · normal or extended range · 40 seconds</footer>
@@ -121,20 +121,16 @@
     // MIDI bounds per clef: normal stays on the staff (no ledger lines), extended is bass C2–G4 and treble E3–E6.
     const RANGE_NAMES=["normal","extended"],RANGES={normal:{bass:[41,59],treble:[62,79]},extended:{bass:[36,67],treble:[52,88]}},CLEF_FONT="'Noto Music','Segoe UI Symbol',serif";
     const TOTAL=10,GAME_SECONDS=40,LINE_GAP=16,STEP=LINE_GAP/2,BOTTOM_Y=136;
-    function saveSettings(){writeStorage("noteTrainerSettings",{range:selectedRange,sound:soundEnabled,voice:voiceEnabled,sharps:sharpEnabled,flats:flatEnabled,bassClef:bassEnabled});}
+    function saveSettings(){writeStorage("noteTrainerSettings",{range:selectedRange,sound:soundEnabled,mic:micEnabled,sharps:sharpEnabled,flats:flatEnabled,bassClef:bassEnabled});}
     function readStorage(key,fallback){try{const value=localStorage.getItem(key);return value===null?fallback:JSON.parse(value);}catch{return fallback;}}
     function writeStorage(key,value){try{localStorage.setItem(key,JSON.stringify(value));}catch{}}
     const savedSettings=readStorage("noteTrainerSettings",{}),loadedBestScores=readStorage("noteTrainerBestScoresRange",{});
     let selectedRange=RANGE_NAMES.includes(savedSettings?.range)?savedSettings.range:"normal";
     let soundEnabled=savedSettings?.sound!==false;
-    const SpeechRecognizer=window.SpeechRecognition||window.webkitSpeechRecognition;
-    // Spoken solfège as the French recogniser tends to spell it (accents stripped), mapped to pitch classes.
-    const VOICE_NOTES={2:0,deux:0,et:2,est:2,es:2,he:2,eh:2,hey:2,ai:2,air:2,gre:2,pre:2,tres:2,va:5,a:9,ah:9,ha:9,6:11,s:11,c:11};
-    // Anything else is matched on how it starts, since only seven words are ever expected.
-    const VOICE_PREFIXES=[[/^d/,0],[/^r/,2],[/^m/,4],[/^(f|ph)/,5],[/^s(o|au|eau|eu)/,7],[/^l/,9],[/^(s|c)(i|y|e)|^sc/,11]];
-    const VOICE_PROMPT="● Listening — say the note name (do, ré, mi, fa, sol, la, si)";
-    const VOICE_SHIFTS={diese:1,dieses:1,dieze:1,diez:1,sharp:1,bemol:-1,bemols:-1,flat:-1};
-    let voiceEnabled=Boolean(SpeechRecognizer)&&savedSettings?.voice===true,recognizer=null,voiceConsumed=[],voicePending=null,voiceRestart=null,voiceLanguage="fr-FR";
+    // Microphone answers: the pitch that is sung or played is matched to a note name, in any octave.
+    const MIC_SUPPORTED=Boolean(navigator.mediaDevices?.getUserMedia&&(window.AudioContext||window.webkitAudioContext));
+    const MIC_PROMPT="● Listening — sing or play the note",MIC_FRAME_MS=50,MIC_STABLE_FRAMES=3,MIC_QUIET_FRAMES=3,MIC_FLOOR=.012,MIC_TOLERANCE=.42;
+    let micEnabled=MIC_SUPPORTED&&savedSettings?.mic===true,micStream=null,micSource=null,micAnalyser=null,micBuffer=null,micTimer=null,micCandidate=null,micRun=0,micQuiet=0,micHeld=null;
     let sharpEnabled=savedSettings?.sharps===true,flatEnabled=savedSettings?.flats===true;
     let bassEnabled=savedSettings?.bassClef===true;
     let bestScores=loadedBestScores&&typeof loadedBestScores==="object"?loadedBestScores:{};
@@ -258,7 +254,8 @@
         play();
       }else if(soundUnlocked)audioContext.resume().then(play).catch(()=>{});
     }
-    function playPresentedNote(){playTone(round[index]);}
+    // With the microphone on the note is not played: the microphone would hear it and answer by itself.
+    function playPresentedNote(){if(!micEnabled)playTone(round[index]);}
     function playErrorSound(){
       if(!soundEnabled)return;
       const Audio=window.AudioContext||window.webkitAudioContext;
@@ -283,10 +280,10 @@
         }
       }).catch(()=>{});
     }
-    function answer(choice,heard=""){
+    function answer(choice){
       if(!active||locked)return;locked=true;
       const note=round[index],correct=Number(choice)===note.midi%12;
-      if(!correct){playErrorSound();mistakes.push({note,chosen:Number(choice),heard});}
+      if(!correct){playErrorSound();mistakes.push({note,chosen:Number(choice)});}
       outcomes[index]=correct?"good":"bad";
       feedback.className=`feedback ${correct?"good":"bad"}`;
       feedback.textContent=correct?`Correct! ${note.solfege} (${note.name}${note.octave})`:`That was ${note.solfege} (${note.name}${note.octave})`;
@@ -307,7 +304,7 @@
       if(noteTimer){clearTimeout(noteTimer);noteTimer=null;}
       document.querySelector("#time").textContent="0:00";
       document.querySelector("#timeStat").classList.add("urgent");
-      document.querySelector("#answerArea").hidden=true;stopListening();
+      document.querySelector("#answerArea").hidden=true;stopMic();
       const start=document.querySelector("#start");start.hidden=false;start.textContent="PLAY AGAIN";
       feedback.className="feedback";feedback.textContent=`Time's up! You recognised ${score} ${score===1?"note":"notes"}.`;
       document.querySelectorAll(".octaveChoice,.accidentalToggle").forEach(button=>button.disabled=false);
@@ -328,7 +325,7 @@
       document.querySelectorAll(".accidentalToggle").forEach(button=>button.disabled=true);
       feedback.className="feedback";feedback.textContent="";
       makeAnswers();drawStaff();
-      soundUnlocked=true;playPresentedNote();startListening();
+      soundUnlocked=true;playPresentedNote();startMic();
       timer=setInterval(()=>{
         const remainingMs=Math.max(0,endAt-Date.now()),remainingSeconds=Math.ceil(remainingMs/1000);
         document.querySelector("#time").textContent=remainingMs<=10000?(remainingMs/1000).toFixed(2):`${Math.floor(remainingSeconds/60)}:${String(remainingSeconds%60).padStart(2,"0")}`;
@@ -352,7 +349,7 @@
       const review=document.querySelector("#review"),reviewToggle=document.querySelector("#reviewToggle"),opening=review.hidden;
       if(opening){
         const useFlats=flatEnabled&&!sharpEnabled,names=useFlats?FLAT_NAMES:SHARP_NAMES,letters=useFlats?FLAT_LETTERS:SHARP_LETTERS;
-        review.innerHTML=mistakes.map(({note,chosen,heard})=>`<div class="mistake">${mistakeStaff(note)}<div><div class="mistakeRight">${note.solfege} (${note.name}${note.accidental}${note.octave})</div><div class="mistakeWrong">${chosen<0?`Not a note name: “${heard}”`:`You answered ${names[chosen]} (${letters[chosen]})`}</div></div></div>`).join("");
+        review.innerHTML=mistakes.map(({note,chosen})=>`<div class="mistake">${mistakeStaff(note)}<div><div class="mistakeRight">${note.solfege} (${note.name}${note.accidental}${note.octave})</div><div class="mistakeWrong">You answered ${names[chosen]} (${letters[chosen]})</div></div></div>`).join("");
       }
       review.hidden=!opening;reviewToggle.setAttribute("aria-expanded",String(opening));
       reviewToggle.textContent=`${opening?"HIDE":"REVIEW"} MISTAKES (${mistakes.length})`;
@@ -362,10 +359,10 @@
       const soundButton=document.querySelector("#soundToggle");
       soundButton.textContent=soundEnabled?"SOUND ON":"SOUND OFF";
       soundButton.setAttribute("aria-pressed",String(soundEnabled));
-      const voiceButton=document.querySelector("#voiceToggle");
-      voiceButton.disabled=!SpeechRecognizer;
-      voiceButton.textContent=!SpeechRecognizer?"NOT AVAILABLE":voiceEnabled?"VOICE ON":"VOICE OFF";
-      voiceButton.setAttribute("aria-pressed",String(voiceEnabled));
+      const micButton=document.querySelector("#micToggle");
+      micButton.disabled=!MIC_SUPPORTED;
+      micButton.textContent=!MIC_SUPPORTED?"NOT AVAILABLE":micEnabled?"MIC ON":"MIC OFF";
+      micButton.setAttribute("aria-pressed",String(micEnabled));
       document.querySelector("#sharpToggle").setAttribute("aria-pressed",String(sharpEnabled));
       document.querySelector("#flatToggle").setAttribute("aria-pressed",String(flatEnabled));
       document.querySelector("#bassToggle").setAttribute("aria-pressed",String(bassEnabled));
@@ -392,77 +389,73 @@
       saveSettings();renderSettings();
       if(active&&soundEnabled){soundUnlocked=true;playPresentedNote();}
     }
-    function toggleVoice(){
-      if(!SpeechRecognizer)return;
-      voiceEnabled=!voiceEnabled;saveSettings();renderSettings();
-      if(active){if(voiceEnabled)startListening();else stopListening();}
+    function toggleMic(){
+      if(!MIC_SUPPORTED)return;
+      micEnabled=!micEnabled;saveSettings();renderSettings();
+      if(active){if(micEnabled)startMic();else stopMic();}
     }
-    function setVoiceStatus(text){const status=document.querySelector("#voiceStatus");status.textContent=text;status.hidden=false;}
-    function scheduleListening(delay){
-      clearTimeout(voiceRestart);
-      voiceRestart=setTimeout(()=>{if(active&&voiceEnabled)startListening();},delay);
-    }
-    function startListening(){
-      if(!voiceEnabled||!SpeechRecognizer||recognizer)return;
-      const session=recognizer=new SpeechRecognizer();
-      // Ask for one session for the whole game; a phone that closes it anyway is reopened by onend below.
-      if(voiceLanguage)session.lang=voiceLanguage;
-      session.continuous=true;session.interimResults=true;session.maxAlternatives=5;
-      session.onresult=handleVoiceResult;
-      session.onnomatch=()=>{setVoiceStatus("● Heard something, but no words");answer("-1","?");};
-      session.onerror=event=>{
-        if(event.error==="not-allowed"||event.error==="service-not-allowed"){
-          voiceEnabled=false;saveSettings();renderSettings();stopListening();
-          feedback.className="feedback bad";feedback.textContent="Microphone access was refused, so voice answers are off.";
-        }else if(event.error==="language-not-supported"&&voiceLanguage){voiceLanguage="";setVoiceStatus("● French is not available here, using the phone's language");}
-        else if(event.error!=="no-speech"&&event.error!=="aborted")setVoiceStatus(`● Voice problem: ${event.error}`);
-      };
-      // Sessions end after a phrase or a pause, so keep reopening one for as long as the game runs.
-      session.onend=()=>{if(recognizer!==session)return;recognizer=null;voiceConsumed=[];scheduleListening(120);};
-      voiceConsumed=[];
-      try{session.start();if(document.querySelector("#voiceStatus").hidden)setVoiceStatus(VOICE_PROMPT);}
-      catch{recognizer=null;scheduleListening(400);}
-    }
-    function stopListening(){
-      clearTimeout(voicePending);voicePending=null;clearTimeout(voiceRestart);voiceRestart=null;
-      document.querySelector("#voiceStatus").hidden=true;
-      if(!recognizer)return;
-      const stopping=recognizer;recognizer=null;stopping.onend=null;stopping.onresult=null;stopping.onnomatch=null;stopping.onerror=null;
-      try{stopping.abort();}catch{}
-    }
-    function voiceWords(transcript){return transcript.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g,"").split(/[^a-z0-9]+/).filter(Boolean);}
-    function voicePitch(word){
-      if(word===undefined||word in VOICE_SHIFTS)return undefined;
-      if(word in VOICE_NOTES)return VOICE_NOTES[word];
-      return VOICE_PREFIXES.find(([pattern])=>pattern.test(word))?.[1];
-    }
-    function handleVoiceResult(event){
-      clearTimeout(voicePending);voicePending=null;
-      for(let i=event.resultIndex;i<event.results.length;i++){
-        const result=event.results[i],alternatives=Array.from({length:result.length},(_,k)=>voiceWords(result[k].transcript)),words=alternatives[0];
-        if(!words.length)continue;
-        // Some phones repeat everything said so far in each new result, so skip what the previous one already held.
-        const earlier=i>0?voiceWords(event.results[i-1][0].transcript):[],repeats=earlier.length>0&&earlier.every((word,k)=>words[k]===word);
-        const from=Math.max(voiceConsumed[i]||0,repeats?earlier.length:0),heard=words.slice(from).join(" ");
-        if(heard)setVoiceStatus(`● Heard: “${heard}”`);
-        // The recogniser's other guesses for the same word count too.
-        const pitchAt=position=>alternatives.map(guess=>voicePitch(guess[position])).find(pitch=>pitch!==undefined);
-        let position=from;
-        while(position<words.length&&pitchAt(position)===undefined)position++;
-        if(position===words.length){
-          // Speech that is not a note name counts as a wrong answer once the recogniser has settled on it.
-          if(result.isFinal&&from<words.length&&words.slice(from).some(word=>!(word in VOICE_SHIFTS))){voiceConsumed[i]=words.length;answer("-1",heard);}
-          continue;
-        }
-        const pitchClass=pitchAt(position),shift=VOICE_SHIFTS[words[position+1]],isLast=position===words.length-1;
-        // With accidentals on, "do" may still be followed by "dièse", so give the rest of the phrase a moment to arrive.
-        if(isLast&&!result.isFinal&&(sharpEnabled||flatEnabled)){
-          voicePending=setTimeout(()=>{voicePending=null;voiceConsumed[i]=position+1;answer(String(pitchClass),heard);},450);
-          return;
-        }
-        voiceConsumed[i]=result.isFinal?words.length:position+(shift?2:1);
-        answer(String((pitchClass+(shift||0)+12)%12),heard);
+    function setMicStatus(text){const status=document.querySelector("#micStatus");status.textContent=text;status.hidden=false;}
+    async function startMic(){
+      if(!micEnabled||micStream)return;
+      try{
+        const stream=await navigator.mediaDevices.getUserMedia({audio:{echoCancellation:false,noiseSuppression:false,autoGainControl:false}});
+        if(!active||!micEnabled||micStream){stream.getTracks().forEach(track=>track.stop());return;}
+        audioContext??=new (window.AudioContext||window.webkitAudioContext)();
+        await audioContext.resume();
+        micStream=stream;micSource=audioContext.createMediaStreamSource(stream);micAnalyser=audioContext.createAnalyser();
+        micAnalyser.fftSize=4096;micSource.connect(micAnalyser);micBuffer=new Float32Array(micAnalyser.fftSize);
+        micCandidate=null;micRun=0;micQuiet=0;micHeld=null;
+        micTimer=setInterval(listenForPitch,MIC_FRAME_MS);setMicStatus(MIC_PROMPT);
+      }catch{
+        micEnabled=false;saveSettings();renderSettings();stopMic();
+        feedback.className="feedback bad";feedback.textContent="The microphone could not be used, so it is switched off.";
       }
+    }
+    function stopMic(){
+      clearInterval(micTimer);micTimer=null;
+      micSource?.disconnect();micSource=null;micAnalyser=null;
+      micStream?.getTracks().forEach(track=>track.stop());micStream=null;
+      document.querySelector("#micStatus").hidden=true;
+    }
+    // Fundamental frequency of the buffer in Hz (YIN method), or null for silence and noise.
+    function detectPitch(buffer,sampleRate){
+      const size=buffer.length>>1,minLag=Math.max(2,Math.floor(sampleRate/1500)),maxLag=Math.min(size-1,Math.ceil(sampleRate/60));
+      let energy=0;
+      for(let i=0;i<buffer.length;i++)energy+=buffer[i]*buffer[i];
+      if(Math.sqrt(energy/buffer.length)<MIC_FLOOR)return null;
+      const difference=new Float32Array(maxLag+1);
+      let running=0,best=-1;
+      for(let lag=1;lag<=maxLag;lag++){
+        let sum=0;
+        for(let i=0;i<size;i++){const delta=buffer[i]-buffer[i+lag];sum+=delta*delta;}
+        running+=sum;difference[lag]=running?sum*lag/running:1;
+      }
+      for(let lag=minLag;lag<maxLag;lag++){
+        if(difference[lag]<.15){while(lag+1<maxLag&&difference[lag+1]<difference[lag])lag++;best=lag;break;}
+      }
+      if(best<0)return null;
+      const before=difference[best-1],at=difference[best],after=difference[best+1],curve=before-2*at+after;
+      return sampleRate/(best+(curve?(before-after)/(2*curve):0));
+    }
+    function listenForPitch(){
+      if(!micAnalyser||!active||locked)return;
+      micAnalyser.getFloatTimeDomainData(micBuffer);
+      const frequency=detectPitch(micBuffer,audioContext.sampleRate);
+      if(!frequency){
+        micCandidate=null;micRun=0;
+        // A held note only answers once; it can answer again after a short silence.
+        if(++micQuiet>=MIC_QUIET_FRAMES)micHeld=null;
+        return;
+      }
+      micQuiet=0;
+      const midi=69+12*Math.log2(frequency/440),nearest=Math.round(midi);
+      if(Math.abs(midi-nearest)>MIC_TOLERANCE){micCandidate=null;micRun=0;return;}
+      const pitchClass=((nearest%12)+12)%12;
+      if(pitchClass===micCandidate)micRun++;else{micCandidate=pitchClass;micRun=1;}
+      if(micRun<MIC_STABLE_FRAMES||pitchClass===micHeld)return;
+      micHeld=pitchClass;
+      setMicStatus(`● Heard: ${(flatEnabled&&!sharpEnabled?FLAT_NAMES:SHARP_NAMES)[pitchClass]}`);
+      answer(String(pitchClass));
     }
     function toggleAccidental(kind){
       if(active)return;
@@ -494,7 +487,7 @@
     document.querySelector("#start").addEventListener("click",startGame);
     document.querySelector("#reviewToggle").addEventListener("click",toggleReview);
     document.querySelector("#soundToggle").addEventListener("click",toggleSound);
-    document.querySelector("#voiceToggle").addEventListener("click",toggleVoice);
+    document.querySelector("#micToggle").addEventListener("click",toggleMic);
     document.querySelector("#sharpToggle").addEventListener("click",()=>toggleAccidental("sharp"));
     document.querySelector("#flatToggle").addEventListener("click",()=>toggleAccidental("flat"));
     document.querySelector("#bassToggle").addEventListener("click",toggleBassClef);
