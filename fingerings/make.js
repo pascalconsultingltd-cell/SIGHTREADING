@@ -28,7 +28,7 @@ function check(scale, row) {
 function text(scale) {
   const width = data.strings.map((_, s) => Math.max(...scale.rows.map(r => r.cells[s].length)) + 3);
   const line = (label, cells) => (label.padEnd(7) + cells.map((c, s) => c.padEnd(width[s])).join('')).trimEnd();
-  return [scale.name, line('', data.strings), ...scale.rows.map(r => line(r.label, r.cells))].join('\n');
+  return [scale.name, line('', data.strings), ...scale.rows.map(r => line(r.label + (r.common ? '*' : ''), r.cells))].join('\n');
 }
 function svg(scale) {
   const font = `font-family="Segoe Print, Comic Sans MS, cursive" text-anchor="middle"`, colours = { pink: '#ff4fa3', blue: '#35b8e8' };
@@ -44,6 +44,7 @@ function svg(scale) {
   data.strings.forEach((s, i) => out += `<text x="${x[i + 1] + colW[i + 1] / 2}" y="${y[0] + 58}" font-size="52" ${font}>${s}</text>`);
   scale.rows.forEach((row, r) => {
     const top = y[r + 1], h = rowH[r + 1], cy = top + h / 2, start = row.cells.findIndex(c => c);
+    if (row.common) out += `<rect x="${x[0]}" y="${top}" width="${right - x[0]}" height="${h}" fill="#fff3a8"/>`;
     out += `<rect x="${x[start + 1] + 10}" y="${top + 9}" width="${right - x[start + 1] - 20}" height="${h - 18}" rx="14" fill="none" stroke="${colours[row.family]}" stroke-width="6" opacity=".6"/>`;
     out += isNaN(row.label) ? `<text x="${x[0] + colW[0] / 2}" y="${cy + 12}" font-size="32" ${font}>${row.label}</text>`
       : `<circle cx="${x[0] + colW[0] / 2}" cy="${cy}" r="30" fill="none" stroke="#111" stroke-width="3"/><text x="${x[0] + colW[0] / 2}" y="${cy + 14}" font-size="40" ${font}>${row.label}</text>`;

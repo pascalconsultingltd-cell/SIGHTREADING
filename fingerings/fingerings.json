@@ -5,7 +5,8 @@
     "_n": "hand moves down one fret from this note; stays until the next mark",
     "^n": "hand moves up one fret from this note; stays until the next mark",
     "k(a/b)": "same string: play group a, slide k frets (last note of a to first note of b), play group b",
-    "family": "coloured box around rows that share a shape"
+    "family": "coloured box around rows that share a shape",
+    "common": "most common pattern of the scale: yellow row in the images, * in the text"
   },
   "strings": ["E", "A", "D", "G", "B", "E"],
   "tuning": [0, 5, 10, 15, 19, 24],
@@ -14,7 +15,7 @@
       "name": "Major", "file": "major", "intervals": [0, 2, 4, 5, 7, 9, 11],
       "rows": [
         { "label": "1", "family": "pink", "cells": ["[4]", "134", "13", "_1[2]4", "^124", "13[4]"] },
-        { "label": "2", "family": "blue", "cells": ["[2]4", "124", "13[4]", "134", "24", "1[2]4"] },
+        { "label": "2", "common": true, "family": "blue", "cells": ["[2]4", "124", "13[4]", "134", "24", "1[2]4"] },
         { "label": "3", "family": "blue", "cells": ["", "", "[2]4", "124", "^13[4]", "134"] },
         { "label": "4", "family": "pink", "cells": ["", "[4]", "134", "13", "1[2]4", "124"] },
         { "label": "5", "family": "blue", "cells": ["", "[2]4", "124", "13[4]", "^134", "13"] },
@@ -24,7 +25,7 @@
     {
       "name": "Natural minor", "file": "natural-minor", "intervals": [0, 2, 3, 5, 7, 8, 10],
       "rows": [
-        { "label": "1", "family": "blue", "cells": ["[1]34", "134", "1[3]", "_124", "^124", "[1]34"] },
+        { "label": "1", "common": true, "family": "blue", "cells": ["[1]34", "134", "1[3]", "_124", "^124", "[1]34"] },
         { "label": "2", "family": "pink", "cells": ["[4]", "124", "124", "[1]34", "^134", "1[3]"] },
         { "label": "3", "family": "blue", "cells": ["", "", "[1]34", "134", "2[4]", "124"] },
         { "label": "4", "family": "pink", "cells": ["", "", "[4]", "124", "^124", "[1]34"] },
@@ -36,7 +37,7 @@
     {
       "name": "Harmonic minor", "file": "harmonic-minor", "intervals": [0, 2, 3, 5, 7, 8, 11],
       "rows": [
-        { "label": "1", "family": "blue", "cells": ["[1]34", "134", "2[3]", "_124", "23", "1[2]4"] },
+        { "label": "1", "common": true, "family": "blue", "cells": ["[1]34", "134", "2[3]", "_124", "23", "1[2]4"] },
         { "label": "2", "family": "pink", "cells": ["[4]", "124", "12^4", "_[1]34", "^134", "2[3]"] },
         { "label": "3", "family": "blue", "cells": ["", "", "[1]34", "134", "3[4]", "124"] },
         { "label": "4", "family": "pink", "cells": ["", "", "[4]", "124", "23", "1[2]4"] },
@@ -50,7 +51,7 @@
     {
       "name": "Melodic minor", "file": "melodic-minor", "intervals": [0, 2, 3, 5, 7, 9, 11],
       "rows": [
-        { "label": "1", "family": "blue", "cells": ["[1]34", "13", "_13[4]", "124", "24", "1[2]4"] },
+        { "label": "1", "common": true, "family": "blue", "cells": ["[1]34", "13", "_13[4]", "124", "24", "1[2]4"] },
         { "label": "2", "family": "pink", "cells": ["[4]", "124", "13", "_1[2]4", "13", "_13"] },
         { "label": "3", "family": "blue", "cells": ["", "", "[1]34", "13", "13[4]", "124"] },
         { "label": "4", "family": "pink", "cells": ["", "", "[4]", "124", "24", "1[2]4"] },
@@ -61,7 +62,7 @@
     {
       "name": "Minor pentatonic", "file": "minor-pentatonic", "intervals": [0, 3, 5, 7, 10],
       "rows": [
-        { "label": "1", "family": "blue", "cells": ["[1]4", "13", "1[3]", "13", "14", "[1]4"] },
+        { "label": "1", "common": true, "family": "blue", "cells": ["[1]4", "13", "1[3]", "13", "14", "[1]4"] },
         { "label": "2", "family": "pink", "cells": ["[4]", "24", "14", "[1]4", "24", "2[4]"] },
         { "label": "3", "family": "blue", "cells": ["", "", "[1]4", "13", "2[4]", "24"] },
         { "label": "4", "family": "pink", "cells": ["", "", "[4]", "24", "^14", "[1]4"] },
@@ -72,7 +73,7 @@
     {
       "name": "Major pentatonic", "file": "major-pentatonic", "intervals": [0, 2, 4, 7, 9],
       "rows": [
-        { "label": "1", "family": "blue", "cells": ["[2]4", "14", "1[4]", "13", "24", "[2]4"] },
+        { "label": "1", "common": true, "family": "blue", "cells": ["[2]4", "14", "1[4]", "13", "24", "[2]4"] },
         { "label": "2", "family": "pink", "cells": ["[4]", "13", "13", "[1]3", "14", "1[4]"] },
         { "label": "3", "family": "blue", "cells": ["", "", "[2]4", "14", "^1[4]", "13"] },
         { "label": "4", "family": "pink", "cells": ["", "", "[4]", "13", "24", "[2]4"] },
@@ -83,7 +84,7 @@
     {
       "name": "Blues", "file": "blues", "intervals": [0, 3, 5, 6, 7, 10],
       "rows": [
-        { "label": "1", "family": "blue", "cells": ["[1]4", "123", "1[3]", "134", "14", "[1]4"] },
+        { "label": "1", "common": true, "family": "blue", "cells": ["[1]4", "123", "1[3]", "134", "14", "[1]4"] },
         { "label": "2", "family": "pink", "cells": ["[4]", "^134", "_14", "[1]4", "234", "2[4]"] },
         { "label": "3", "family": "blue", "cells": ["", "", "[1]4", "123", "2[4]", "24"] },
         { "label": "4", "family": "pink", "cells": ["", "", "[4]", "^134", "14", "[1]4"] },
@@ -94,7 +95,7 @@
     {
       "name": "Major arpeggio", "file": "arp-major", "intervals": [0, 4, 7],
       "rows": [
-        { "label": "1", "family": "blue", "cells": ["[2]", "14", "[4]", "3", "2", "[2]"] },
+        { "label": "1", "common": true, "family": "blue", "cells": ["[2]", "14", "[4]", "3", "2", "[2]"] },
         { "label": "2", "family": "pink", "cells": ["[4]", "3", "1", "[1]", "14", "[4]"] },
         { "label": "3", "family": "blue", "cells": ["", "", "[2]", "14", "^[4]", "3"] },
         { "label": "4", "family": "pink", "cells": ["", "", "[4]", "3", "2", "[2]"] },
@@ -105,7 +106,7 @@
     {
       "name": "Minor arpeggio", "file": "arp-minor", "intervals": [0, 3, 7],
       "rows": [
-        { "label": "1", "family": "blue", "cells": ["[1]4", "3", "[3]", "1", "1", "[1]4"] },
+        { "label": "1", "common": true, "family": "blue", "cells": ["[1]4", "3", "[3]", "1", "1", "[1]4"] },
         { "label": "2", "family": "pink", "cells": ["[4]", "2", "1", "[1]4", "4", "[4]"] },
         { "label": "3", "family": "blue", "cells": ["", "", "[1]4", "3", "[4]", "2"] },
         { "label": "4", "family": "pink", "cells": ["", "", "[4]", "2", "2", "[2]"] },
@@ -116,7 +117,7 @@
     {
       "name": "Dominant 7 arpeggio", "file": "arp-dominant7", "intervals": [0, 4, 7, 10],
       "rows": [
-        { "label": "1", "family": "blue", "cells": ["[2]", "14", "2[4]", "3", "^14", "[1]"] },
+        { "label": "1", "common": true, "family": "blue", "cells": ["[2]", "14", "2[4]", "3", "^14", "[1]"] },
         { "label": "2", "family": "pink", "cells": ["[4]", "3", "14", "[1]", "14", "2[4]"] },
         { "label": "3", "family": "blue", "cells": ["", "", "[2]", "14", "^2[4]", "3"] },
         { "label": "4", "family": "pink", "cells": ["", "", "[4]", "3", "^14", "[1]"] },
@@ -127,7 +128,7 @@
     {
       "name": "Major 7 arpeggio", "file": "arp-major7", "intervals": [0, 4, 7, 11],
       "rows": [
-        { "label": "1", "family": "blue", "cells": ["[2]", "14", "3[4]", "3", "2", "1[2]"] },
+        { "label": "1", "common": true, "family": "blue", "cells": ["[2]", "14", "3[4]", "3", "2", "1[2]"] },
         { "label": "2", "family": "pink", "cells": ["[4]", "3", "1", "_1[2]", "^14", "3[4]"] },
         { "label": "3", "family": "blue", "cells": ["", "", "[2]", "14", "^3[4]", "3"] },
         { "label": "4", "family": "pink", "cells": ["", "", "[4]", "3", "2", "1[2]"] },
@@ -138,7 +139,7 @@
     {
       "name": "Minor 7 arpeggio", "file": "arp-minor7", "intervals": [0, 3, 7, 10],
       "rows": [
-        { "label": "1", "family": "blue", "cells": ["[1]4", "3", "1[3]", "1", "14", "[1]4"] },
+        { "label": "1", "common": true, "family": "blue", "cells": ["[1]4", "3", "1[3]", "1", "14", "[1]4"] },
         { "label": "2", "family": "pink", "cells": ["[4]", "2", "14", "[1]4", "4", "2[4]"] },
         { "label": "3", "family": "blue", "cells": ["", "", "[1]4", "3", "2[4]", "2"] },
         { "label": "4", "family": "pink", "cells": ["", "", "[4]", "2", "^14", "[1]4"] },
