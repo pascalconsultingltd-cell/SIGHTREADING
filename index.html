@@ -91,7 +91,7 @@
 <body>
   <main>
     <header><h1>SIGHT-READING PRACTICE</h1></header>
-    <div class="octaveChoices" id="tabs" role="group" aria-label="Select tab" style="margin:0 0 10px;grid-template-columns:repeat(5,minmax(0,1fr))">
+    <div class="octaveChoices" id="tabs" role="group" aria-label="Select tab" style="margin:0 0 10px;grid-template-columns:repeat(5,minmax(0,1fr))" hidden>
       <button class="octaveChoice selected" type="button" data-tab="game" aria-pressed="true">GAME</button>
       <button class="octaveChoice" type="button" data-tab="scales" aria-pressed="false">SCALES</button>
       <button class="octaveChoice" type="button" data-tab="keys" aria-pressed="false">KEYS</button>
@@ -128,7 +128,7 @@
       <p class="micStatus" id="micStatus" hidden></p>
       <div class="piano" id="answers" aria-label="Solfege answers"></div>
     </section>
-    <footer>Sight-reading · normal or extended range · 40 seconds</footer>
+    <footer>Sight-reading · normal or extended range · 40 seconds · <a href="privacy.html" style="color:inherit">Privacy</a></footer>
     </div>
     <div id="scalesTab" hidden>
       <section class="settings" aria-label="Scale choice">
@@ -587,6 +587,9 @@
     document.querySelector("#bassToggle").addEventListener("click",toggleBassClef);
     document.querySelectorAll("#octaveChoices .octaveChoice").forEach(button=>button.addEventListener("click",()=>selectRange(button.dataset.range)));
     document.querySelectorAll("#tabs .octaveChoice").forEach(button=>button.addEventListener("click",()=>showTab(button.dataset.tab)));
+    // The public sees the game only; opening the page once with ?me shows the other tabs on that device, ?public hides them again.
+    if(["?me","?public"].includes(location.search))writeStorage("noteTrainerPrivate",location.search==="?me");
+    document.querySelector("#tabs").hidden=!readStorage("noteTrainerPrivate",false);
     fetch("fingerings/fingerings.json").then(response=>response.json()).then(data=>{
       // Two sections, scales then arpeggios; left column has a major third (4 semitones), right column is minor.
       const column=list=>`<div class="scaleColumn">${list.map(scale=>`<button class="octaveChoice" type="button" data-file="${scale.file}" aria-pressed="false">${scale.name.replace(" arpeggio","").toUpperCase()}</button>`).join("")}</div>`;
