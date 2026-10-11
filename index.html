@@ -79,6 +79,7 @@
     .chart img{display:block;width:100%}
     .tips p,.tips ul{margin:8px 0 0;font-size:14px;line-height:1.45}
     .tips ul{padding-left:18px}
+    .videos a{display:block;padding:9px 0;border-top:1px solid #eef1ea;color:#173b32;font-size:14px;font-weight:650;text-decoration:none}
     .tips table{width:100%;margin-top:8px;border-collapse:collapse;font-size:14px;text-align:left}
     .tips td,.tips th{padding:4px 0;border-top:1px solid #eef1ea}
     .tips th{font-size:10px;letter-spacing:1px;color:#829087}
@@ -90,11 +91,12 @@
 <body>
   <main>
     <header><h1>SIGHT-READING PRACTICE</h1></header>
-    <div class="octaveChoices" id="tabs" role="group" aria-label="Select tab" style="margin:0 0 10px;grid-template-columns:repeat(4,minmax(0,1fr))">
+    <div class="octaveChoices" id="tabs" role="group" aria-label="Select tab" style="margin:0 0 10px;grid-template-columns:repeat(5,minmax(0,1fr))">
       <button class="octaveChoice selected" type="button" data-tab="game" aria-pressed="true">GAME</button>
       <button class="octaveChoice" type="button" data-tab="scales" aria-pressed="false">SCALES</button>
       <button class="octaveChoice" type="button" data-tab="keys" aria-pressed="false">KEYS</button>
       <button class="octaveChoice" type="button" data-tab="tips" aria-pressed="false">TIPS</button>
+      <button class="octaveChoice" type="button" data-tab="videos" aria-pressed="false">VIDEOS</button>
     </div>
     <div id="gameTab">
     <section class="stats" aria-label="Game score and time">
@@ -190,6 +192,7 @@
         <li>Blues 1 is minor pentatonic 1 plus finger 2 on A and finger 4 on G.</li></ul>
       </section>
     </div>
+    <div id="videosTab" class="videos" hidden></div>
   </main>
   <script>
     "use strict";
@@ -563,7 +566,7 @@
     }
     function showTab(tab){
       if(active)return;
-      ["game","scales","keys","tips"].forEach(name=>document.querySelector(`#${name}Tab`).hidden=tab!==name);
+      ["game","scales","keys","tips","videos"].forEach(name=>document.querySelector(`#${name}Tab`).hidden=tab!==name);
       markChoice("#tabs","tab",tab);
     }
     function showScale(file){document.querySelector("#scaleChart").src=`fingerings/${file}.svg`;markChoice("#scaleChoices","file",file);}
@@ -594,6 +597,10 @@
       document.querySelectorAll("#scaleChoices .octaveChoice").forEach(button=>button.addEventListener("click",()=>showScale(button.dataset.file)));
       showScale(data.scales[0].file);
     }).catch(()=>{});
+    // Videos tab: [YouTube id or full link, title]; an empty title is a private video, shown by its id.
+    const VIDEOS={"DONE":[["GLho2X8YfB0","Road Trippin' (RHCP) - Rockschool Acoustic Grade 4"],["Yy93h_8auSI",""],["0efyiD3VOWI&t=12s","Castles Made of Sand (RHCP) - lesson with tab"],["_PaBwDGkPyI","Honky Tonk Women (Rolling Stones) - lesson with tabs"],["omldj2L2W08",""],["kgTviHFuhmY","Wake Up - Trinity Grade 5"],["3hTq0Lh4HjQ",""],["jc-wdeuk0tI",""]],
+      "TO KEEP":[["sTM17bmV4wg","Honky Tonk Women - Ike & Tina Turner (1971)"],["WBij96YnCrM",""],["kgTviHFuhmY","Wake Up - Trinity Grade 5"],["n4bLe04SYik","Cold Sweat - Trinity Grade 4"],["Ie1hkL0rgaw",""],["GfY4f3zqnRY",""],["draAz3ts_gI",""],["3u2LPxk0qlw",""],["bNM7XYLurVs",""],["Z-b0eKlrjb4",""],["w0cjrxuQqS4",""],["jc-wdeuk0tI",""],["jAL5Hz-ojJQ",""],["vSolzcLTxrQ",""],["GLho2X8YfB0","Road Trippin' (RHCP) - Rockschool Acoustic Grade 4"],["ff-fwwgSvE8",""],["XGkQpvRQlOg","Sweet Child Of Mine - Trinity Grade 8"],["Yy93h_8auSI",""],["https://www.boiteachansons.net/Partitions/Serge-Gainsbourg/Marilou-sous-la-neige.php","Marilou sous la neige (Gainsbourg) - partition"]]};
+    document.querySelector("#videosTab").innerHTML=Object.entries(VIDEOS).map(([title,list])=>`<section class="settings"><div class="settingTitle" style="margin-bottom:8px">${title}</div>${list.map(([link,name])=>`<a href="${link.startsWith("http")?link:"https://www.youtube.com/watch?v="+link}" target="_blank" rel="noopener">${name||"Private video "+link}</a>`).join("")}</section>`).join("");
     document.addEventListener("keydown",handleKeyboardAnswer);
     document.addEventListener("pointerdown",unlockSound,{capture:true});
     document.addEventListener("keydown",unlockSound,{capture:true});
