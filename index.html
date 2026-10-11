@@ -77,6 +77,8 @@
     .answer:disabled{opacity:.65;cursor:default}
     .scaleColumn{display:grid;gap:6px;align-content:start}
     .chart img{display:block;width:100%}
+    .tips p,.tips ul{margin:8px 0 0;font-size:14px;line-height:1.45}
+    .tips ul{padding-left:18px}
     footer{margin-top:10px;text-align:center;color:#89938b;font-size:11px;font-weight:600;letter-spacing:.3px}
     @media(max-width:360px){main{padding-left:10px;padding-right:10px}.naturalKeys{gap:2px}.naturalKey{min-height:56px}.blackKey{width:40px}}
     @media(max-height:700px){main{padding-top:14px}.staffWrap{margin-top:0}.answer{min-height:52px}}
@@ -85,9 +87,10 @@
 <body>
   <main>
     <header><h1>SIGHT-READING PRACTICE</h1></header>
-    <div class="octaveChoices" id="tabs" role="group" aria-label="Select tab" style="margin:0 0 10px">
+    <div class="octaveChoices" id="tabs" role="group" aria-label="Select tab" style="margin:0 0 10px;grid-template-columns:repeat(3,minmax(0,1fr))">
       <button class="octaveChoice selected" type="button" data-tab="game" aria-pressed="true">GAME</button>
       <button class="octaveChoice" type="button" data-tab="scales" aria-pressed="false">SCALES</button>
+      <button class="octaveChoice" type="button" data-tab="tips" aria-pressed="false">TIPS</button>
     </div>
     <div id="gameTab">
     <section class="stats" aria-label="Game score and time">
@@ -127,6 +130,47 @@
       </section>
       <section class="card" aria-label="Guitar fingering chart"><div class="chart"><img id="scaleChart" alt="Guitar fingering chart"></div></section>
       <footer>Rows: patterns · columns: strings · numbers: fingers · red circle: tonic · yellow: most common</footer>
+    </div>
+    <div id="tipsTab" class="tips" hidden>
+      <section class="settings"><div class="settingTitle">RELATIVE MAJOR AND MINOR</div>
+        <p>Every major scale has a relative minor: the same seven notes, with another note as home.</p>
+        <p>The minor tonic is the 6th note of the major scale, three frets below the major tonic. Do major and La minor share their notes. So do Sol major and Mi minor, Fa major and Re minor.</p>
+        <p>On the neck, three frets is index to pinky on one string. So one shape gives both scales:</p>
+        <ul><li>Tonic under the <b>pinky</b>: major.</li><li>Tonic under the <b>index</b>: minor.</li></ul>
+        <p>Major pattern 1 and natural minor pattern 1 have the same fingers on every string. Only the red circle moves. Same for the pentatonics: major pentatonic 2 is the minor pentatonic 1 box.</p>
+        <p>What changes is where the phrase rests. End on the pinky note and it sounds major. End on the index note and it sounds minor.</p>
+      </section>
+      <section class="settings"><div class="settingTitle">WHERE THE NEXT TONIC FALLS</div>
+        <ul><li>Octave: two strings up, two fingers up. Major starts on 2, octave on <b>4</b>. Minor starts on 1, octave on <b>3</b>.</li>
+        <li>Two octaves: high E string, same finger as on the low E string.</li>
+        <li>Tonic under the pinky on the low E string: next tonic is three strings up, under finger 1. Major scale: finger 2, hand one fret down.</li></ul>
+      </section>
+      <section class="settings"><div class="settingTitle">TONIC, FIFTH, OCTAVE</div>
+        <ul><li>Fourth: next string, same finger as the tonic.</li>
+        <li>Fifth: next string, two fingers up.</li>
+        <li>Octave: right above the fifth, same finger. Major: 4 on A, 4 on D. Minor: 3 on A, 3 on D.</li></ul>
+      </section>
+      <section class="settings"><div class="settingTitle">THE START FINGER TELLS THE SCALE</div>
+        <ul><li>Tonic on 1: the minor third is on the same string, finger 4.</li>
+        <li>Tonic on 2: the major third is on the next string, finger 1.</li>
+        <li>Tonic on 4: look at the next string. Finger 3 is major, finger 2 is minor.</li></ul>
+      </section>
+      <section class="settings"><div class="settingTitle">THE FINGER BELOW THE TONIC</div>
+        <ul><li>Major: the finger right below the tonic (1 then 2, or 3 then 4).</li>
+        <li>Natural minor: one finger gap (1 then 3).</li>
+        <li>Harmonic minor: natural minor with that note raised (2 then 3).</li></ul>
+      </section>
+      <section class="settings"><div class="settingTitle">THE B STRING</div>
+        <p>The B string is tuned one fret lower than the pattern expects. Crossing from G to B, the hand moves up one fret. Every rule above gains one fret when it crosses the B string.</p>
+      </section>
+      <section class="settings"><div class="settingTitle">ONE SHAPE, THREE PLACES</div>
+        <p>Patterns 1, 3 and 5 are the same shape starting on the E, D and A strings. Only the B string changes it.</p>
+      </section>
+      <section class="settings"><div class="settingTitle">SCALES CONTAIN THE SMALLER ONES</div>
+        <ul><li>Major arpeggio 1 uses the same fingers as major pattern 2, with notes left out.</li>
+        <li>Minor 7 arpeggio 1 is minor pentatonic 1 without the fourth.</li>
+        <li>Blues 1 is minor pentatonic 1 plus finger 2 on A and finger 4 on G.</li></ul>
+      </section>
     </div>
   </main>
   <script>
@@ -501,7 +545,7 @@
     }
     function showTab(tab){
       if(active)return;
-      document.querySelector("#gameTab").hidden=tab!=="game";document.querySelector("#scalesTab").hidden=tab!=="scales";
+      ["game","scales","tips"].forEach(name=>document.querySelector(`#${name}Tab`).hidden=tab!==name);
       markChoice("#tabs","tab",tab);
     }
     function showScale(file){document.querySelector("#scaleChart").src=`fingerings/${file}.svg`;markChoice("#scaleChoices","file",file);}
