@@ -75,6 +75,7 @@
     .answer:active{transform:scale(.97);background:#e7f3d1}
     .blackKey:active{transform:translateX(-50%) scale(.97);background:#285444}
     .answer:disabled{opacity:.65;cursor:default}
+    .scaleColumn{display:grid;gap:6px;align-content:start}
     .chart img{display:block;width:100%}
     footer{margin-top:10px;text-align:center;color:#89938b;font-size:11px;font-weight:600;letter-spacing:.3px}
     @media(max-width:360px){main{padding-left:10px;padding-right:10px}.naturalKeys{gap:2px}.naturalKey{min-height:56px}.blackKey{width:40px}}
@@ -122,8 +123,7 @@
     </div>
     <div id="scalesTab" hidden>
       <section class="settings" aria-label="Scale choice">
-        <div class="settingTitle">SCALE OR ARPEGGIO</div>
-        <div class="octaveChoices" id="scaleChoices" role="group" aria-label="Select scale"></div>
+        <div id="scaleChoices" role="group" aria-label="Select scale or arpeggio"></div>
       </section>
       <section class="card" aria-label="Guitar fingering chart"><div class="chart"><img id="scaleChart" alt="Guitar fingering chart"></div></section>
       <footer>Rows: patterns · columns: strings · numbers: fingers · red circle: tonic · yellow: most common</footer>
@@ -523,7 +523,12 @@
     document.querySelectorAll("#octaveChoices .octaveChoice").forEach(button=>button.addEventListener("click",()=>selectRange(button.dataset.range)));
     document.querySelectorAll("#tabs .octaveChoice").forEach(button=>button.addEventListener("click",()=>showTab(button.dataset.tab)));
     fetch("fingerings/fingerings.json").then(response=>response.json()).then(data=>{
-      document.querySelector("#scaleChoices").innerHTML=data.scales.map(scale=>`<button class="octaveChoice" type="button" data-file="${scale.file}" aria-pressed="false">${scale.name.toUpperCase()}</button>`).join("");
+      // Two sections, scales then arpeggios; left column has a major third (4 semitones), right column is minor.
+      const column=list=>`<div class="scaleColumn">${list.map(scale=>`<button class="octaveChoice" type="button" data-file="${scale.file}" aria-pressed="false">${scale.name.replace(" arpeggio","").toUpperCase()}</button>`).join("")}</div>`;
+      document.querySelector("#scaleChoices").innerHTML=["SCALES","ARPEGGIOS"].map((title,arpeggio)=>{
+        const group=data.scales.filter(scale=>scale.name.includes("arpeggio")===Boolean(arpeggio));
+        return `<div class="settingTitle"${arpeggio?' style="margin-top:14px"':""}>${title} · MAJOR LEFT · MINOR RIGHT</div><div class="octaveChoices">${column(group.filter(scale=>scale.intervals.includes(4)))}${column(group.filter(scale=>!scale.intervals.includes(4)))}</div>`;
+      }).join("");
       document.querySelectorAll("#scaleChoices .octaveChoice").forEach(button=>button.addEventListener("click",()=>showScale(button.dataset.file)));
       showScale(data.scales[0].file);
     }).catch(()=>{});
