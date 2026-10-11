@@ -79,6 +79,9 @@
     .chart img{display:block;width:100%}
     .tips p,.tips ul{margin:8px 0 0;font-size:14px;line-height:1.45}
     .tips ul{padding-left:18px}
+    .tips table{width:100%;margin-top:8px;border-collapse:collapse;font-size:14px;text-align:left}
+    .tips td,.tips th{padding:4px 0;border-top:1px solid #eef1ea}
+    .tips th{font-size:10px;letter-spacing:1px;color:#829087}
     footer{margin-top:10px;text-align:center;color:#89938b;font-size:11px;font-weight:600;letter-spacing:.3px}
     @media(max-width:360px){main{padding-left:10px;padding-right:10px}.naturalKeys{gap:2px}.naturalKey{min-height:56px}.blackKey{width:40px}}
     @media(max-height:700px){main{padding-top:14px}.staffWrap{margin-top:0}.answer{min-height:52px}}
@@ -87,9 +90,10 @@
 <body>
   <main>
     <header><h1>SIGHT-READING PRACTICE</h1></header>
-    <div class="octaveChoices" id="tabs" role="group" aria-label="Select tab" style="margin:0 0 10px;grid-template-columns:repeat(3,minmax(0,1fr))">
+    <div class="octaveChoices" id="tabs" role="group" aria-label="Select tab" style="margin:0 0 10px;grid-template-columns:repeat(4,minmax(0,1fr))">
       <button class="octaveChoice selected" type="button" data-tab="game" aria-pressed="true">GAME</button>
       <button class="octaveChoice" type="button" data-tab="scales" aria-pressed="false">SCALES</button>
+      <button class="octaveChoice" type="button" data-tab="keys" aria-pressed="false">KEYS</button>
       <button class="octaveChoice" type="button" data-tab="tips" aria-pressed="false">TIPS</button>
     </div>
     <div id="gameTab">
@@ -130,6 +134,25 @@
       </section>
       <section class="card" aria-label="Guitar fingering chart"><div class="chart"><img id="scaleChart" alt="Guitar fingering chart"></div></section>
       <footer>Rows: patterns · columns: strings · numbers: fingers · red circle: tonic · yellow: most common</footer>
+    </div>
+    <div id="keysTab" class="tips" hidden>
+      <section class="settings"><div class="settingTitle">SHARPS</div>
+        <p>Order: <b>Fa Do Sol Re La Mi Si</b>. Each one is a fifth above the one before.</p>
+        <p>Major key: <b>one note above the last sharp</b> (one fret up). Last sharp Sol#: key of La.</p>
+        <table><tr><th></th><th>LAST</th><th>MAJOR</th><th>MINOR</th></tr><tr><td>1</td><td>Fa#</td><td><b>Sol</b></td><td>Mi</td></tr><tr><td>2</td><td>Do#</td><td><b>Re</b></td><td>Si</td></tr><tr><td>3</td><td>Sol#</td><td><b>La</b></td><td>Fa#</td></tr><tr><td>4</td><td>Re#</td><td><b>Mi</b></td><td>Do#</td></tr><tr><td>5</td><td>La#</td><td><b>Si</b></td><td>Sol#</td></tr><tr><td>6</td><td>Mi#</td><td><b>Fa#</b></td><td>Re#</td></tr><tr><td>7</td><td>Si#</td><td><b>Do#</b></td><td>La#</td></tr></table>
+      </section>
+      <section class="settings"><div class="settingTitle">FLATS</div>
+        <p>Order: <b>Si Mi La Re Sol Do Fa</b>. The sharp order backwards.</p>
+        <p>Major key: <b>the flat before the last one</b>. Flats Si♭ Mi♭ La♭: key of Mi♭. One flat alone: Fa.</p>
+        <table><tr><th></th><th>LAST</th><th>MAJOR</th><th>MINOR</th></tr><tr><td>1</td><td>Si♭</td><td><b>Fa</b></td><td>Re</td></tr><tr><td>2</td><td>Mi♭</td><td><b>Si♭</b></td><td>Sol</td></tr><tr><td>3</td><td>La♭</td><td><b>Mi♭</b></td><td>Do</td></tr><tr><td>4</td><td>Re♭</td><td><b>La♭</b></td><td>Fa</td></tr><tr><td>5</td><td>Sol♭</td><td><b>Re♭</b></td><td>Si♭</td></tr><tr><td>6</td><td>Do♭</td><td><b>Sol♭</b></td><td>Mi♭</td></tr><tr><td>7</td><td>Fa♭</td><td><b>Do♭</b></td><td>La♭</td></tr></table>
+      </section>
+      <section class="settings"><div class="settingTitle">THE OTHER WAY AND MINOR</div>
+        <ul><li>No sharp, no flat: Do major or La minor.</li>
+        <li>Flat keys: Fa, and every key with ♭ in its name. All other keys use sharps.</li>
+        <li>Sharp key to signature: the last sharp is the note below the tonic. Say the order up to it.</li>
+        <li>Flat key to signature: say the order until one flat past the key name.</li>
+        <li>Minor key: 3 frets below the major key, same signature.</li></ul>
+      </section>
     </div>
     <div id="tipsTab" class="tips" hidden>
       <section class="settings"><div class="settingTitle">RELATIVE MAJOR AND MINOR</div>
@@ -541,7 +564,7 @@
     }
     function showTab(tab){
       if(active)return;
-      ["game","scales","tips"].forEach(name=>document.querySelector(`#${name}Tab`).hidden=tab!==name);
+      ["game","scales","keys","tips"].forEach(name=>document.querySelector(`#${name}Tab`).hidden=tab!==name);
       markChoice("#tabs","tab",tab);
     }
     function showScale(file){document.querySelector("#scaleChart").src=`fingerings/${file}.svg`;markChoice("#scaleChoices","file",file);}
