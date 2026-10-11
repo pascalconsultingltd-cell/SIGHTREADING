@@ -527,7 +527,7 @@
       const column=list=>`<div class="scaleColumn">${list.map(scale=>`<button class="octaveChoice" type="button" data-file="${scale.file}" aria-pressed="false">${scale.name.replace(" arpeggio","").toUpperCase()}</button>`).join("")}</div>`;
       document.querySelector("#scaleChoices").innerHTML=["SCALES","ARPEGGIOS"].map((title,arpeggio)=>{
         const group=data.scales.filter(scale=>scale.name.includes("arpeggio")===Boolean(arpeggio));
-        return `<div class="settingTitle"${arpeggio?' style="margin-top:14px"':""}>${title} · MAJOR LEFT · MINOR RIGHT</div><div class="octaveChoices">${column(group.filter(scale=>scale.intervals.includes(4)))}${column(group.filter(scale=>!scale.intervals.includes(4)))}</div>`;
+        return `<div class="settingTitle"${arpeggio?' style="margin-top:14px"':""}>${title}</div><div class="octaveChoices">${column(group.filter(scale=>scale.intervals.includes(4)))}${column(group.filter(scale=>!scale.intervals.includes(4)))}</div>`;
       }).join("");
       document.querySelectorAll("#scaleChoices .octaveChoice").forEach(button=>button.addEventListener("click",()=>showScale(button.dataset.file)));
       showScale(data.scales[0].file);
