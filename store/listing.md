@@ -56,7 +56,7 @@ Copy each block into the matching Play Console field.
 
 - App or game: App · Category: Education
 - Tags: Music, Education
-- Contact email: required, shown publicly on the listing
+- Contact email: `pascal.consulting.ltd@gmail.com` (shown publicly on the listing)
 - Privacy policy: `https://pascalconsultingltd-cell.github.io/SIGHTREADING/privacy.html`
 
 ## App content
