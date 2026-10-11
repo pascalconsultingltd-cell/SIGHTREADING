@@ -1,0 +1,16 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 200"><rect width="200" height="200" fill="#f3f5ef"/>
+<path d="M28 168 H172" stroke="#111" stroke-opacity=".25" stroke-width="3" stroke-linecap="round"/>
+<g font-family="'Noto Music','Segoe UI Symbol',serif" text-anchor="middle" dominant-baseline="central">
+<g transform="rotate(-6 78 102)"><text x="78" y="102" font-size="104" fill="#111">&#119070;</text></g>
+<g transform="rotate(38 130 116)"><text x="130" y="112" font-size="104" fill="#d9951a">&#119074;</text></g></g>
+<g transform="translate(36 8) scale(.8)">
+<path d="M124.6 50 A15 15 0 1 0 153.6 50.5 Z" fill="#fff"/><circle cx="174" cy="53" r="16" fill="#fff"/>
+<g fill="none" stroke="#111" stroke-linecap="round"><path stroke-width="2.4" d="M124.6 50 A15 15 0 1 0 153.6 50.5"/><circle stroke-width="2.4" cx="174" cy="53" r="16"/><path stroke-width="4" d="M161.5 43 A16 16 0 0 1 186.5 43"/></g>
+<g fill="#111"><circle cx="136" cy="58" r="6.5"/><circle cx="170" cy="59" r="7"/></g>
+<g fill="#fff"><circle cx="134" cy="56" r="2.6"/><circle cx="168" cy="57" r="3"/></g>
+<g fill="#111" stroke="#111" stroke-width="1" stroke-linejoin="round">
+<path d="M116 45.5 Q126 44 134 47.5 Q146 53 152.5 48.5 C159 44 157 34 146 30 C153 36 154 43 150 45.5 Q145 48 134 44 Q126 41.5 116 45.5 Z"/>
+<path d="M121 35 Q127 22 142 25 Q130 26 121 35 Z"/>
+<path d="M168 32 Q172 21 182 17 Q179 27 168 32 Z"/></g>
+</g>
+</svg>
