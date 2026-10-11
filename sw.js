@@ -17,7 +17,7 @@ self.addEventListener("activate", event => {
 self.addEventListener("fetch", event => {
   if (event.request.method !== "GET" || new URL(event.request.url).origin !== location.origin) return;
   event.respondWith(
-    fetch(event.request)
+    fetch(event.request, { cache: "no-cache" }) // ask the server each time: Pages lets the browser keep files 10 minutes
       .then(response => {
         if (response.ok) {
           const copy = response.clone();
