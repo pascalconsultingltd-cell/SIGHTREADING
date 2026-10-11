@@ -1,0 +1,16 @@
+{
+  "note": "Each mode starts on one degree of the major scale and uses the same notes, so the major fingerings in fingerings.json cover all seven; only the tonic moves. intervals are semitones above the tonic. brightness: 1 is brightest, each step lowers one note.",
+  "modes": [
+    { "degree": 1, "name": "Ionian", "formula": "1 2 3 4 5 6 7", "intervals": [0, 2, 4, 5, 7, 9, 11], "quality": "major", "versus": "major itself", "whiteKeys": "C", "brightness": 2 },
+    { "degree": 2, "name": "Dorian", "formula": "1 2 b3 4 5 6 b7", "intervals": [0, 2, 3, 5, 7, 9, 10], "quality": "minor", "versus": "minor with raised 6th", "whiteKeys": "D", "brightness": 4 },
+    { "degree": 3, "name": "Phrygian", "formula": "1 b2 b3 4 5 b6 b7", "intervals": [0, 1, 3, 5, 7, 8, 10], "quality": "minor", "versus": "minor with lowered 2nd", "whiteKeys": "E", "brightness": 6 },
+    { "degree": 4, "name": "Lydian", "formula": "1 2 3 #4 5 6 7", "intervals": [0, 2, 4, 6, 7, 9, 11], "quality": "major", "versus": "major with raised 4th", "whiteKeys": "F", "brightness": 1 },
+    { "degree": 5, "name": "Mixolydian", "formula": "1 2 3 4 5 6 b7", "intervals": [0, 2, 4, 5, 7, 9, 10], "quality": "major", "versus": "major with lowered 7th", "whiteKeys": "G", "brightness": 3 },
+    { "degree": 6, "name": "Aeolian", "formula": "1 2 b3 4 5 b6 b7", "intervals": [0, 2, 3, 5, 7, 8, 10], "quality": "minor", "versus": "natural minor itself", "whiteKeys": "A", "brightness": 5 },
+    { "degree": 7, "name": "Locrian", "formula": "1 b2 b3 4 b5 b6 b7", "intervals": [0, 1, 3, 5, 6, 8, 10], "quality": "diminished", "versus": "minor with lowered 2nd and 5th", "whiteKeys": "B", "brightness": 7 }
+  ],
+  "related": [
+    { "name": "Phrygian dominant", "formula": "1 b2 3 4 5 b6 b7", "intervals": [0, 1, 4, 5, 7, 8, 10], "versus": "Phrygian with major 3rd; 5th mode of harmonic minor" },
+    { "name": "Lydian dominant", "formula": "1 2 3 #4 5 6 b7", "intervals": [0, 2, 4, 6, 7, 9, 10], "versus": "Lydian with lowered 7th; 4th mode of melodic minor" }
+  ]
+}

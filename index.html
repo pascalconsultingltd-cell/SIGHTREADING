@@ -14,6 +14,7 @@
   <meta name="apple-mobile-web-app-status-bar-style" content="default">
   <style>
     *{box-sizing:border-box}
+    [hidden]{display:none!important}
     :root{font-family:system-ui,-apple-system,"Segoe UI",sans-serif;color:#173b32;background:#f3f5ef;font-synthesis:none}
     body{margin:0;min-height:100vh;min-height:100dvh}
     main{width:min(100%,520px);margin:0 auto;padding:18px 16px calc(14px + env(safe-area-inset-bottom))}
@@ -74,6 +75,7 @@
     .answer:active{transform:scale(.97);background:#e7f3d1}
     .blackKey:active{transform:translateX(-50%) scale(.97);background:#285444}
     .answer:disabled{opacity:.65;cursor:default}
+    .chart img{display:block;width:100%}
     footer{margin-top:10px;text-align:center;color:#89938b;font-size:11px;font-weight:600;letter-spacing:.3px}
     @media(max-width:360px){main{padding-left:10px;padding-right:10px}.naturalKeys{gap:2px}.naturalKey{min-height:56px}.blackKey{width:40px}}
     @media(max-height:700px){main{padding-top:14px}.staffWrap{margin-top:0}.answer{min-height:52px}}
@@ -82,6 +84,11 @@
 <body>
   <main>
     <header><h1>SIGHT-READING PRACTICE</h1></header>
+    <div class="octaveChoices" id="tabs" role="group" aria-label="Select tab" style="margin:0 0 10px">
+      <button class="octaveChoice selected" type="button" data-tab="game" aria-pressed="true">GAME</button>
+      <button class="octaveChoice" type="button" data-tab="scales" aria-pressed="false">SCALES</button>
+    </div>
+    <div id="gameTab">
     <section class="stats" aria-label="Game score and time">
       <div class="stat"><div class="label">NOTES CORRECT</div><strong id="score">0</strong></div>
       <div class="stat" id="timeStat"><div class="label">TIME LEFT</div><strong id="time">0:40</strong></div>
@@ -112,6 +119,15 @@
       <div class="piano" id="answers" aria-label="Solfege answers"></div>
     </section>
     <footer>Sight-reading · normal or extended range · 40 seconds</footer>
+    </div>
+    <div id="scalesTab" hidden>
+      <section class="settings" aria-label="Scale choice">
+        <div class="settingTitle">SCALE OR ARPEGGIO</div>
+        <div class="octaveChoices" id="scaleChoices" role="group" aria-label="Select scale"></div>
+      </section>
+      <section class="card" aria-label="Guitar fingering chart"><div class="chart"><img id="scaleChart" alt="Guitar fingering chart"></div></section>
+      <footer>Rows: patterns · columns: strings · numbers: fingers · red circle: tonic</footer>
+    </div>
   </main>
   <script>
     "use strict";
@@ -366,7 +382,7 @@
       document.querySelector("#sharpToggle").setAttribute("aria-pressed",String(sharpEnabled));
       document.querySelector("#flatToggle").setAttribute("aria-pressed",String(flatEnabled));
       document.querySelector("#bassToggle").setAttribute("aria-pressed",String(bassEnabled));
-      document.querySelectorAll(".octaveChoice").forEach(button=>{
+      document.querySelectorAll("#octaveChoices .octaveChoice").forEach(button=>{
         const selected=button.dataset.range===selectedRange;
         button.classList.toggle("selected",selected);button.setAttribute("aria-pressed",String(selected));
       });
@@ -476,6 +492,19 @@
       feedback.className="feedback";feedback.textContent="Identify as many notes as you can in 40 seconds.";
       renderSettings();drawStaff();
     }
+    // Scales tab: fingering charts made by fingerings/make.js, one image per scale.
+    function markChoice(group,key,value){
+      document.querySelectorAll(`${group} .octaveChoice`).forEach(button=>{
+        const selected=button.dataset[key]===value;
+        button.classList.toggle("selected",selected);button.setAttribute("aria-pressed",String(selected));
+      });
+    }
+    function showTab(tab){
+      if(active)return;
+      document.querySelector("#gameTab").hidden=tab!=="game";document.querySelector("#scalesTab").hidden=tab!=="scales";
+      markChoice("#tabs","tab",tab);
+    }
+    function showScale(file){document.querySelector("#scaleChart").src=`fingerings/${file}.svg`;markChoice("#scaleChoices","file",file);}
     function handleKeyboardAnswer(event){
       if(!active||locked||event.repeat)return;
       const key=event.key.toLowerCase(),naturalKeys={c:0,v:2,b:4,n:5,m:7,",":9,".":11},accidentalKeys={f:1,g:3,h:6,k:8,l:10};
@@ -491,7 +520,13 @@
     document.querySelector("#sharpToggle").addEventListener("click",()=>toggleAccidental("sharp"));
     document.querySelector("#flatToggle").addEventListener("click",()=>toggleAccidental("flat"));
     document.querySelector("#bassToggle").addEventListener("click",toggleBassClef);
-    document.querySelectorAll(".octaveChoice").forEach(button=>button.addEventListener("click",()=>selectRange(button.dataset.range)));
+    document.querySelectorAll("#octaveChoices .octaveChoice").forEach(button=>button.addEventListener("click",()=>selectRange(button.dataset.range)));
+    document.querySelectorAll("#tabs .octaveChoice").forEach(button=>button.addEventListener("click",()=>showTab(button.dataset.tab)));
+    fetch("fingerings/fingerings.json").then(response=>response.json()).then(data=>{
+      document.querySelector("#scaleChoices").innerHTML=data.scales.map(scale=>`<button class="octaveChoice" type="button" data-file="${scale.file}" aria-pressed="false">${scale.name.toUpperCase()}</button>`).join("");
+      document.querySelectorAll("#scaleChoices .octaveChoice").forEach(button=>button.addEventListener("click",()=>showScale(button.dataset.file)));
+      showScale(data.scales[0].file);
+    }).catch(()=>{});
     document.addEventListener("keydown",handleKeyboardAnswer);
     document.addEventListener("pointerdown",unlockSound,{capture:true});
     document.addEventListener("keydown",unlockSound,{capture:true});
