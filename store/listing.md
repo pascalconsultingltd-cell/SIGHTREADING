@@ -74,4 +74,5 @@ Copy each block into the matching Play Console field.
 ## Release
 
 - Countries: all, or start with the United Kingdom.
-- Price: set before the first production release. A free app can never be changed to paid later.
+- Price: Free. A free app can never be changed to paid, but an in-app purchase can be added later.
+- Monetisation stays off, so the listing shows name and country only, not the address.
