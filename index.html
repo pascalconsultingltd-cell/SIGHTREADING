@@ -81,6 +81,7 @@
     .tips ul{padding-left:18px}
     .tuneStrings{display:grid;grid-template-columns:repeat(6,minmax(0,1fr));gap:4px;margin-top:8px}
     .tuneStrings .octaveChoice{min-height:58px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px}
+    .tuneInput{width:92px;padding:7px 8px;border:1px solid #e2e8df;border-radius:12px;background:#f7f8f4;color:#173b32;font:inherit;font-size:16px;font-weight:800;text-align:center}
     .tuneNote{text-align:center;font-size:40px;font-weight:850;line-height:1.2}
     .tuneMeter{position:relative;height:14px;margin:14px 6px;border-radius:7px;background:linear-gradient(90deg,#f8e9e3,#e7f3d1 45% 55%,#f8e9e3)}
     .tuneMeter::after{content:"";position:absolute;left:50%;top:-4px;bottom:-4px;width:2px;background:#173b32;transform:translateX(-50%)}
@@ -202,10 +203,10 @@
     </div>
     <div id="videosTab" class="videos" hidden></div>
     <div id="tuneTab" hidden>
-      <section class="settings"><div class="settingTitle">REFERENCE A = 432 Hz · TAP A STRING TO HEAR IT</div><div class="tuneStrings" id="tuneStrings"></div></section>
+      <section class="settings"><div class="settingLine"><span class="settingTitle">REFERENCE A (Hz)</span><input class="tuneInput" id="tuneA" type="number" inputmode="decimal" min="400" max="480" step="0.1" aria-label="Reference A in Hz"></div><div class="settingTitle" style="margin-top:12px">TAP A STRING TO HEAR IT</div><div class="tuneStrings" id="tuneStrings"></div></section>
       <section class="card"><div class="tuneNote" id="tuneNote">–</div><div class="tuneMeter"><div class="tuneNeedle" id="tuneNeedle"></div></div><div class="feedback" id="tuneInfo">Start the tuner and play one string.</div></section>
       <button class="start" id="tuneStart" type="button">START TUNER</button>
-      <footer>A = 432 Hz is 32 cents below standard A = 440 Hz</footer>
+      <footer id="tuneFooter"></footer>
     </div>
   </main>
   <script>
@@ -585,8 +586,14 @@
       markChoice("#tabs","tab",tab);
     }
     function showScale(file){document.querySelector("#scaleChart").src=`fingerings/${file}.svg`;markChoice("#scaleChoices","file",file);}
-    // Tuner tab: guitar strings low to high, tuned from A = 432 Hz instead of 440.
-    const TUNE_A=432,TUNE_STRINGS=[[40,"Mi","E"],[45,"La","A"],[50,"Re","D"],[55,"Sol","G"],[59,"Si","B"],[64,"Mi","E"]].map(([midi,name,letter])=>({name,letter,hz:TUNE_A*2**((midi-69)/12)}));
+    // Tuner tab: guitar strings low to high, tuned from a chosen A (432 Hz by default, 440 is standard).
+    const TUNE_STRINGS=[[40,"Mi","E"],[45,"La","A"],[50,"Re","D"],[55,"Sol","G"],[59,"Si","B"],[64,"Mi","E"]].map(([midi,name,letter])=>({midi,name,letter,hz:0}));
+    function setTuneA(a){
+      TUNE_STRINGS.forEach(string=>string.hz=a*2**((string.midi-69)/12));
+      document.querySelector("#tuneStrings").innerHTML=TUNE_STRINGS.map((string,i)=>`<button class="octaveChoice" type="button" data-string="${i}" aria-pressed="false">${string.name}<span class="keyLetter">${string.letter}</span><span class="keyLetter">${string.hz.toFixed(1)}</span></button>`).join("");
+      const cents=Math.round(1200*Math.log2(a/440));
+      document.querySelector("#tuneFooter").textContent=cents?`A = ${a} Hz is ${Math.abs(cents)} cents ${cents<0?"below":"above"} standard A = 440 Hz`:"A = 440 Hz is standard tuning";
+    }
     let tuneStream=null,tuneAnalyser=null,tuneTimer=null,tuneHeard=[];
     function playReference(hz){
       audioContext??=new (window.AudioContext||window.webkitAudioContext)();
@@ -623,10 +630,11 @@
       markChoice("#tuneStrings","string",String(TUNE_STRINGS.indexOf(string)));
       document.querySelector("#tuneNote").textContent=`${string.name} (${string.letter})`;
       const needle=document.querySelector("#tuneNeedle");needle.style.left=`${50+Math.max(-50,Math.min(50,cents))}%`;needle.classList.toggle("good",good);
-      document.querySelector("#tuneInfo").textContent=`${good?"In tune":cents<0?"Too low: tighten":"Too high: loosen"} · ${cents>0?"+":""}${Math.round(cents)} cents · ${heard.toFixed(1)} / ${string.hz.toFixed(1)} Hz`;
+      document.querySelector("#tuneInfo").textContent=`${good?"In tune":cents<0?"Too low: tighten":"Too high: loosen"} · ${Math.round(cents)>0?"+":""}${Math.round(cents)} cents · ${heard.toFixed(1)} / ${string.hz.toFixed(1)} Hz`;
     }
-    document.querySelector("#tuneStrings").innerHTML=TUNE_STRINGS.map((string,i)=>`<button class="octaveChoice" type="button" data-string="${i}" aria-pressed="false">${string.name}<span class="keyLetter">${string.letter}</span><span class="keyLetter">${string.hz.toFixed(1)}</span></button>`).join("");
-    document.querySelectorAll("#tuneStrings .octaveChoice").forEach(button=>button.addEventListener("click",()=>playReference(TUNE_STRINGS[button.dataset.string].hz)));
+    const tuneInput=document.querySelector("#tuneA");tuneInput.value=readStorage("tuneReference",432);setTuneA(Number(tuneInput.value));
+    tuneInput.addEventListener("input",()=>{const a=Number(tuneInput.value);if(a>=400&&a<=480){setTuneA(a);writeStorage("tuneReference",a);}});
+    document.querySelector("#tuneStrings").addEventListener("click",event=>{const button=event.target.closest("[data-string]");if(button)playReference(TUNE_STRINGS[button.dataset.string].hz);});
     document.querySelector("#tuneStart").addEventListener("click",toggleTuner);
     function handleKeyboardAnswer(event){
       if(!active||locked||event.repeat)return;
