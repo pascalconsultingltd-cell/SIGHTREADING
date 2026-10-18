@@ -79,6 +79,13 @@
     .chart img{display:block;width:100%}
     .tips p,.tips ul{margin:8px 0 0;font-size:14px;line-height:1.45}
     .tips ul{padding-left:18px}
+    .tuneStrings{display:grid;grid-template-columns:repeat(6,minmax(0,1fr));gap:4px;margin-top:8px}
+    .tuneStrings .octaveChoice{min-height:58px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px}
+    .tuneNote{text-align:center;font-size:40px;font-weight:850;line-height:1.2}
+    .tuneMeter{position:relative;height:14px;margin:14px 6px;border-radius:7px;background:linear-gradient(90deg,#f8e9e3,#e7f3d1 45% 55%,#f8e9e3)}
+    .tuneMeter::after{content:"";position:absolute;left:50%;top:-4px;bottom:-4px;width:2px;background:#173b32;transform:translateX(-50%)}
+    .tuneNeedle{position:absolute;left:50%;top:-6px;width:6px;height:26px;border-radius:3px;background:#c43d35;transform:translateX(-50%);transition:left .1s}
+    .tuneNeedle.good{background:#315d2e}
     .videos a{display:block;padding:9px 0;border-top:1px solid #eef1ea;color:#173b32;font-size:14px;font-weight:650;text-decoration:none}
     .tips table{width:100%;margin-top:8px;border-collapse:collapse;font-size:14px;text-align:left}
     .tips td,.tips th{padding:4px 0;border-top:1px solid #eef1ea}
@@ -91,12 +98,13 @@
 <body>
   <main>
     <header><h1>SIGHT-READING PRACTICE</h1></header>
-    <div class="octaveChoices" id="tabs" role="group" aria-label="Select tab" style="margin:0 0 10px;grid-template-columns:repeat(5,minmax(0,1fr))" hidden>
+    <div class="octaveChoices" id="tabs" role="group" aria-label="Select tab" style="margin:0 0 10px;grid-template-columns:repeat(3,minmax(0,1fr))" hidden>
       <button class="octaveChoice selected" type="button" data-tab="game" aria-pressed="true">GAME</button>
       <button class="octaveChoice" type="button" data-tab="scales" aria-pressed="false">SCALES</button>
       <button class="octaveChoice" type="button" data-tab="keys" aria-pressed="false">KEYS</button>
       <button class="octaveChoice" type="button" data-tab="tips" aria-pressed="false">TIPS</button>
       <button class="octaveChoice" type="button" data-tab="videos" aria-pressed="false">VIDEOS</button>
+      <button class="octaveChoice" type="button" data-tab="tune" aria-pressed="false">TUNER</button>
     </div>
     <div id="gameTab">
     <section class="stats" aria-label="Game score and time">
@@ -193,6 +201,12 @@
       </section>
     </div>
     <div id="videosTab" class="videos" hidden></div>
+    <div id="tuneTab" hidden>
+      <section class="settings"><div class="settingTitle">REFERENCE A = 432 Hz · TAP A STRING TO HEAR IT</div><div class="tuneStrings" id="tuneStrings"></div></section>
+      <section class="card"><div class="tuneNote" id="tuneNote">–</div><div class="tuneMeter"><div class="tuneNeedle" id="tuneNeedle"></div></div><div class="feedback" id="tuneInfo">Start the tuner and play one string.</div></section>
+      <button class="start" id="tuneStart" type="button">START TUNER</button>
+      <footer>A = 432 Hz is 32 cents below standard A = 440 Hz</footer>
+    </div>
   </main>
   <script>
     "use strict";
@@ -566,10 +580,54 @@
     }
     function showTab(tab){
       if(active)return;
-      ["game","scales","keys","tips","videos"].forEach(name=>document.querySelector(`#${name}Tab`).hidden=tab!==name);
+      if(tab!=="tune")stopTuner();
+      ["game","scales","keys","tips","videos","tune"].forEach(name=>document.querySelector(`#${name}Tab`).hidden=tab!==name);
       markChoice("#tabs","tab",tab);
     }
     function showScale(file){document.querySelector("#scaleChart").src=`fingerings/${file}.svg`;markChoice("#scaleChoices","file",file);}
+    // Tuner tab: guitar strings low to high, tuned from A = 432 Hz instead of 440.
+    const TUNE_A=432,TUNE_STRINGS=[[40,"Mi","E"],[45,"La","A"],[50,"Re","D"],[55,"Sol","G"],[59,"Si","B"],[64,"Mi","E"]].map(([midi,name,letter])=>({name,letter,hz:TUNE_A*2**((midi-69)/12)}));
+    let tuneStream=null,tuneAnalyser=null,tuneTimer=null,tuneHeard=[];
+    function playReference(hz){
+      audioContext??=new (window.AudioContext||window.webkitAudioContext)();
+      audioContext.resume().then(()=>{
+        const now=audioContext.currentTime,gain=audioContext.createGain();
+        gain.gain.setValueAtTime(.0001,now);gain.gain.linearRampToValueAtTime(.3,now+.02);gain.gain.exponentialRampToValueAtTime(.0001,now+2.5);gain.connect(audioContext.destination);
+        // Overtones make the low strings audible on a phone speaker.
+        [1,2,3,4].forEach((harmonic,i)=>{const oscillator=audioContext.createOscillator(),level=audioContext.createGain();oscillator.frequency.value=hz*harmonic;level.gain.value=[1,.6,.35,.2][i];oscillator.connect(level);level.connect(gain);oscillator.start(now);oscillator.stop(now+2.5);});
+      }).catch(()=>{});
+    }
+    async function toggleTuner(){
+      if(tuneStream){stopTuner();return;}
+      try{
+        const stream=await navigator.mediaDevices.getUserMedia({audio:{echoCancellation:false,noiseSuppression:false,autoGainControl:false}});
+        audioContext??=new (window.AudioContext||window.webkitAudioContext)();await audioContext.resume();
+        tuneStream=stream;tuneAnalyser=audioContext.createAnalyser();tuneAnalyser.fftSize=4096;audioContext.createMediaStreamSource(stream).connect(tuneAnalyser);
+        const buffer=new Float32Array(tuneAnalyser.fftSize);tuneHeard=[];
+        tuneTimer=setInterval(()=>listenTuner(buffer),MIC_FRAME_MS);
+        document.querySelector("#tuneStart").textContent="STOP TUNER";document.querySelector("#tuneInfo").textContent="Play one string.";
+      }catch{document.querySelector("#tuneInfo").textContent="The microphone could not be used.";}
+    }
+    function stopTuner(){
+      clearInterval(tuneTimer);tuneStream?.getTracks().forEach(track=>track.stop());tuneStream=tuneAnalyser=null;
+      document.querySelector("#tuneStart").textContent="START TUNER";
+    }
+    function listenTuner(buffer){
+      tuneAnalyser.getFloatTimeDomainData(buffer);
+      const hz=detectPitch(buffer,audioContext.sampleRate);
+      if(!hz){tuneHeard=[];return;}
+      // Median of the last five readings steadies the needle.
+      tuneHeard=[...tuneHeard.slice(-4),hz];
+      const heard=[...tuneHeard].sort((a,b)=>a-b)[tuneHeard.length>>1],distance=string=>Math.abs(Math.log(heard/string.hz));
+      const string=TUNE_STRINGS.reduce((best,next)=>distance(next)<distance(best)?next:best),cents=1200*Math.log2(heard/string.hz),good=Math.abs(cents)<=5;
+      markChoice("#tuneStrings","string",String(TUNE_STRINGS.indexOf(string)));
+      document.querySelector("#tuneNote").textContent=`${string.name} (${string.letter})`;
+      const needle=document.querySelector("#tuneNeedle");needle.style.left=`${50+Math.max(-50,Math.min(50,cents))}%`;needle.classList.toggle("good",good);
+      document.querySelector("#tuneInfo").textContent=`${good?"In tune":cents<0?"Too low: tighten":"Too high: loosen"} · ${cents>0?"+":""}${Math.round(cents)} cents · ${heard.toFixed(1)} / ${string.hz.toFixed(1)} Hz`;
+    }
+    document.querySelector("#tuneStrings").innerHTML=TUNE_STRINGS.map((string,i)=>`<button class="octaveChoice" type="button" data-string="${i}" aria-pressed="false">${string.name}<span class="keyLetter">${string.letter}</span><span class="keyLetter">${string.hz.toFixed(1)}</span></button>`).join("");
+    document.querySelectorAll("#tuneStrings .octaveChoice").forEach(button=>button.addEventListener("click",()=>playReference(TUNE_STRINGS[button.dataset.string].hz)));
+    document.querySelector("#tuneStart").addEventListener("click",toggleTuner);
     function handleKeyboardAnswer(event){
       if(!active||locked||event.repeat)return;
       const key=event.key.toLowerCase(),naturalKeys={c:0,v:2,b:4,n:5,m:7,",":9,".":11},accidentalKeys={f:1,g:3,h:6,k:8,l:10};
